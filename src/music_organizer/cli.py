@@ -17,6 +17,8 @@ from .core.classifier import ContentClassifier
 from .core.mover import FileMover, DirectoryOrganizer
 from .models.config import Config, load_config
 from .exceptions import MusicOrganizerError
+from .progress_tracker import IntelligentProgressTracker, ProgressStage
+from .rich_progress_renderer import RichProgressRenderer
 
 console = Console()
 
@@ -92,6 +94,11 @@ def organize(
                 console.print("[yellow]Cancelled[/yellow]")
                 return
 
+        # Initialize intelligent progress tracker
+        progress_tracker = IntelligentProgressTracker()
+        progress_renderer = RichProgressRenderer(console)
+        progress_tracker.add_render_callback(progress_renderer.render)
+
         # Initialize organizer
         organizer = MusicOrganizer(cfg, dry_run=dry_run, interactive=interactive)
 
@@ -109,12 +116,23 @@ def organize(
 
             console.print(f"\n[green]Found {len(files)} audio files[/green]")
 
-            # Process files
-            process_task = progress.add_task("Organizing files...", total=len(files))
-            results = organizer.organize_files(files, progress, process_task)
+            # Set up intelligent progress tracking
+            progress_tracker.set_total_files(len(files))
+            progress_tracker.start_stage(ProgressStage.SCANNING)
+            progress_tracker.finish_stage(ProgressStage.SCANNING)
+            progress_tracker.start_stage(ProgressStage.METADATA_EXTRACTION, total=len(files))
 
-        # Show results
-        console.print("\n[bold]Organization Complete![/bold]")
+            # Process files with custom progress callback
+            results = self._organize_with_intelligent_progress(
+                organizer, files, progress_tracker
+            )
+
+        # Clean up progress tracker
+        progress_tracker.finish_stage(ProgressStage.METADATA_EXTRACTION)
+        progress_renderer.clear()
+
+        # Show results with intelligent progress summary
+        progress_renderer.finish(progress_tracker.metrics)
 
         results_table = Table(title="Results")
         results_table.add_column("Category", style="cyan")
@@ -141,6 +159,94 @@ def organize(
             import traceback
             console.print(traceback.format_exc())
         sys.exit(1)
+
+
+def _organize_with_intelligent_progress(organizer, files, progress_tracker):
+    """Organize files with intelligent progress tracking."""
+    results = {
+        'processed': 0,
+        'moved': 0,
+        'skipped': 0,
+        'by_category': {
+            'Albums': 0,
+            'Live': 0,
+            'Collaborations': 0,
+            'Compilations': 0,
+            'Rarities': 0,
+            'Unknown': 0
+        },
+        'errors': []
+    }
+
+    # Start file mover session
+    if not organizer.dry_run:
+        organizer.file_mover.start_operation(organizer.config.source_directory)
+
+    try:
+        # Create target directory structure
+        if not organizer.dry_run:
+            from .core.mover import DirectoryOrganizer
+            DirectoryOrganizer.create_directory_structure(organizer.config.target_directory)
+
+        # Group files by album/cover art
+        file_groups = organizer._group_files(files)
+
+        # Process each group
+        for group_path, group_files in file_groups.items():
+            for file_path in group_files:
+                results['processed'] += 1
+                error_occurred = False
+
+                # Update progress tracker with file size
+                try:
+                    file_size = file_path.stat().st_size
+                except:
+                    file_size = 0
+
+                try:
+                    # Process individual file
+                    moved = organizer._process_file(file_path)
+                    if moved:
+                        results['moved'] += 1
+                    else:
+                        results['skipped'] += 1
+
+                    # Update category count
+                    if hasattr(moved, 'content_type'):
+                        category = _get_category_name(moved.content_type)
+                        results['by_category'][category] += 1
+
+                except Exception as e:
+                    error_msg = f"Failed to process {file_path.name}: {e}"
+                    results['errors'].append(error_msg)
+                    error_occurred = True
+
+                progress_tracker.set_completed(
+                    results['processed'],
+                    bytes_processed=file_size,
+                    error=error_occurred
+                )
+
+    finally:
+        # Finish file mover session
+        if not organizer.dry_run:
+            organizer.file_mover.finish_operation()
+
+    return results
+
+
+def _get_category_name(content_type):
+    """Get category name from content type."""
+    from .models.audio_file import ContentType
+    mapping = {
+        ContentType.ALBUM: 'Albums',
+        ContentType.LIVE: 'Live',
+        ContentType.COLLABORATION: 'Collaborations',
+        ContentType.COMPILATION: 'Compilations',
+        ContentType.RARITY: 'Rarities',
+        ContentType.UNKNOWN: 'Unknown'
+    }
+    return mapping.get(content_type, 'Unknown')
 
 
 @cli.command()

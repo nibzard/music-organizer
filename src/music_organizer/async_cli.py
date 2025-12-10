@@ -11,6 +11,8 @@ from .core.metadata import MetadataHandler
 from .core.classifier import ContentClassifier
 from .models.config import Config, load_config
 from .exceptions import MusicOrganizerError
+from .progress_tracker import IntelligentProgressTracker, ProgressStage
+from .async_progress_renderer import AsyncProgressRenderer
 
 
 class SimpleProgress:
@@ -167,8 +169,14 @@ class AsyncMusicCLI:
 
                 self.console.print(f"Found {file_count} audio files")
 
-                # Show progress
-                progress = SimpleProgress(file_count, "Organizing files")
+                # Initialize intelligent progress tracker
+                progress_tracker = IntelligentProgressTracker()
+                progress_renderer = AsyncProgressRenderer()
+                progress_tracker.add_render_callback(progress_renderer.render)
+                progress_tracker.set_total_files(file_count)
+
+                # Start scanning stage
+                progress_tracker.start_stage(ProgressStage.SCANNING)
 
                 # Process files in streaming mode for memory efficiency
                 results = {
@@ -186,11 +194,28 @@ class AsyncMusicCLI:
                     'errors': []
                 }
 
+                # Switch to processing stage
+                progress_tracker.finish_stage(ProgressStage.SCANNING)
+                progress_tracker.start_stage(ProgressStage.METADATA_EXTRACTION, total=file_count)
+
                 async for file_path, success, error in organizer.organize_files_streaming(
                     organizer.scan_directory(source),
                     batch_size=50
                 ):
                     results['processed'] += 1
+
+                    # Update progress with file size
+                    try:
+                        file_size = file_path.stat().st_size
+                    except:
+                        file_size = 0
+
+                    progress_tracker.set_completed(
+                        results['processed'],
+                        bytes_processed=file_size,
+                        error=error is not None
+                    )
+
                     if success:
                         results['moved'] += 1
                     else:
@@ -198,7 +223,9 @@ class AsyncMusicCLI:
                         if error:
                             results['errors'].append(f"{file_path.name}: {error}")
 
-                    progress.update()
+                # Finish progress tracking
+                progress_tracker.finish_stage(ProgressStage.METADATA_EXTRACTION)
+                progress_renderer.clear()
 
                 # Show results
                 self.console.rule("\n📊 Results")
