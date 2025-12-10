@@ -1,0 +1,1 @@
+"""Built-in plugins for the music organizer."""
