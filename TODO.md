@@ -5,9 +5,9 @@
 ## 📋 Phase 1: Foundation & Performance (Week 1-2)
 
 ### Core Optimizations
-- [ ] 🔴 Implement async I/O with ThreadPoolExecutor for file operations (scan_directory, move_files)
+- [x] ✅ Implement async I/O with ThreadPoolExecutor for file operations (scan_directory, move_files)
 - [ ] 🔴 Add SQLite metadata caching system with TTL (cache unchanged files for 30 days)
-- [ ] 🔴 Create streaming pipeline architecture to process files in batches (memory-efficient)
+- [x] ✅ Create streaming pipeline architecture to process files in batches (memory-efficient)
 - [ ] 🟡 Implement zero-copy data structures using @dataclass(slots=True) for AudioFile
 - [ ] 🟡 Add intelligent progress tracking with real-time metrics (files/sec, ETA)
 
@@ -143,14 +143,19 @@
 git clone https://github.com/nibzard/music-organizer.git
 cd music-organizer
 
-# Install only mutagen
-pip install mutagen
+# Install dependencies
+pip install -e .
+# OR with uv (recommended)
+uv install
 
 # Run tests
 python -m pytest tests/
 
-# Run with single file
-python src/music_organizer.py organize /source /target
+# Run with async CLI (high performance for large libraries)
+music-organize-async organize /source /target --workers 8
+
+# Run with original CLI
+music-organize organize /source /target
 ```
 
 ### Development Workflow
