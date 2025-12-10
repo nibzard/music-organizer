@@ -2,77 +2,113 @@
 
 from pathlib import Path
 from typing import Dict, Any, Optional
-import yaml
+import json
+from dataclasses import dataclass, field
 
-from pydantic import BaseModel, Field
 
-
-class DirectoryConfig(BaseModel):
+@dataclass
+class DirectoryConfig:
     """Configuration for directory names."""
-    albums: str = Field(default="Albums", description="Albums directory name")
-    live: str = Field(default="Live", description="Live recordings directory")
-    collaborations: str = Field(default="Collaborations", description="Collaborations directory")
-    compilations: str = Field(default="Compilations", description="Compilations directory")
-    rarities: str = Field(default="Rarities", description="Rarities directory")
+    albums: str = "Albums"
+    live: str = "Live"
+    collaborations: str = "Collaborations"
+    compilations: str = "Compilations"
+    rarities: str = "Rarities"
 
 
-class NamingConfig(BaseModel):
+@dataclass
+class NamingConfig:
     """Configuration for file and directory naming patterns."""
-    album_format: str = Field(default="{artist}/{album} ({year})")
-    live_format: str = Field(default="{artist}/{date} - {location}")
-    collab_format: str = Field(default="{album} ({year}) - {artists}")
-    compilation_format: str = Field(default="{artist}/{album} ({year})")
-    rarity_format: str = Field(default="{artist}/{album} ({edition})")
+    album_format: str = "{artist}/{album} ({year})"
+    live_format: str = "{artist}/{date} - {location}"
+    collab_format: str = "{album} ({year}) - {artists}"
+    compilation_format: str = "{artist}/{album} ({year})"
+    rarity_format: str = "{artist}/{album} ({edition})"
 
 
-class MetadataConfig(BaseModel):
+@dataclass
+class MetadataConfig:
     """Configuration for metadata handling."""
-    enhance: bool = Field(default=True, description="Enable metadata enhancement")
-    musicbrainz: bool = Field(default=True, description="Use MusicBrainz for metadata lookup")
-    fix_capitalization: bool = Field(default=True, description="Fix capitalization in tags")
-    standardize_genres: bool = Field(default=True, description="Standardize genre names")
+    enhance: bool = True
+    musicbrainz: bool = True
+    fix_capitalization: bool = True
+    standardize_genres: bool = True
 
 
-class FileOperationsConfig(BaseModel):
+@dataclass
+class FileOperationsConfig:
     """Configuration for file operations."""
-    strategy: str = Field(default="move", pattern="^(copy|move)$")
-    backup: bool = Field(default=True, description="Create backup before changes")
-    handle_duplicates: str = Field(default="number", pattern="^(number|skip|overwrite)$")
+    strategy: str = "move"  # "copy" or "move"
+    backup: bool = True
+    handle_duplicates: str = "number"  # "number", "skip", or "overwrite"
 
 
-class Config(BaseModel):
+@dataclass
+class Config:
     """Main configuration model."""
     source_directory: Path
     target_directory: Path
-    directories: DirectoryConfig = Field(default_factory=DirectoryConfig)
-    naming: NamingConfig = Field(default_factory=NamingConfig)
-    metadata: MetadataConfig = Field(default_factory=MetadataConfig)
-    file_operations: FileOperationsConfig = Field(default_factory=FileOperationsConfig)
+    directories: DirectoryConfig = field(default_factory=DirectoryConfig)
+    naming: NamingConfig = field(default_factory=NamingConfig)
+    metadata: MetadataConfig = field(default_factory=MetadataConfig)
+    file_operations: FileOperationsConfig = field(default_factory=FileOperationsConfig)
+
+
+def _dataclass_to_dict(obj):
+    """Convert dataclass to dict recursively."""
+    from dataclasses import is_dataclass, asdict
+    if is_dataclass(obj):
+        result = {}
+        for key, value in asdict(obj).items():
+            result[key] = _dataclass_to_dict(value)
+        return result
+    elif isinstance(obj, Path):
+        return str(obj)
+    elif isinstance(obj, dict):
+        return {key: _dataclass_to_dict(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [_dataclass_to_dict(item) for item in obj]
+    else:
+        return obj
+
+
+def _dict_to_dataclass(data, dataclass_type):
+    """Convert dict to dataclass recursively."""
+    from dataclasses import is_dataclass, fields
+    if not is_dataclass(dataclass_type):
+        return data
+
+    # Get field types
+    field_types = {f.name: f.type for f in fields(dataclass_type)}
+
+    kwargs = {}
+    for field_name, field_type in field_types.items():
+        if field_name in data:
+            if hasattr(field_type, '__dataclass_fields__'):
+                # It's a dataclass
+                kwargs[field_name] = _dict_to_dataclass(data[field_name], field_type)
+            elif field_type is Path:
+                kwargs[field_name] = Path(data[field_name])
+            else:
+                kwargs[field_name] = data[field_name]
+
+    return dataclass_type(**kwargs)
 
 
 def load_config(config_path: Path) -> Config:
-    """Load configuration from YAML file."""
+    """Load configuration from JSON file."""
     with open(config_path, 'r') as f:
-        config_data = yaml.safe_load(f)
+        config_data = json.load(f)
 
-    # Convert path strings to Path objects
-    if 'source_directory' in config_data:
-        config_data['source_directory'] = Path(config_data['source_directory'])
-    if 'target_directory' in config_data:
-        config_data['target_directory'] = Path(config_data['target_directory'])
-
-    return Config(**config_data)
+    return _dict_to_dataclass(config_data, Config)
 
 
 def save_config(config: Config, config_path: Path) -> None:
-    """Save configuration to YAML file."""
-    # Convert to dict and Path objects to strings
-    config_dict = config.model_dump()
-    config_dict['source_directory'] = str(config.source_directory)
-    config_dict['target_directory'] = str(config.target_directory)
+    """Save configuration to JSON file."""
+    config_dict = _dataclass_to_dict(config)
 
     with open(config_path, 'w') as f:
-        yaml.dump(config_dict, f, default_flow_style=False, indent=2)
+        json.dump(config_dict, f, indent=2)
 
 
 def create_default_config(config_path: Path) -> None:

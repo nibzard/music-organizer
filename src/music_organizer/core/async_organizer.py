@@ -302,12 +302,11 @@ class AsyncMusicOrganizer:
         if cache_key in self.user_decisions:
             return self.user_decisions[cache_key]
 
-        from rich.console import Console
-        from rich.prompt import Prompt
+        from ..console_utils import SimpleConsole
 
-        console = Console()
+        console = SimpleConsole()
 
-        console.print(f"\n[yellow]Ambiguous classification for:[/yellow]")
+        console.print(f"\nAmbiguous classification for:", 'yellow')
         console.print(f"  File: {audio_file.path.name}")
         console.print(f"  Artists: {', '.join(audio_file.artists[:3]) if audio_file.artists else 'Unknown'}")
         console.print(f"  Album: {audio_file.album or 'Unknown'}")
@@ -323,11 +322,14 @@ class AsyncMusicOrganizer:
             '6': 'Skip this file'
         }
 
-        console.print("\n[cyan]Select category:[/cyan]")
+        console.print("\nSelect category:", 'cyan')
         for key, label in options.items():
             console.print(f"  {key}. {label}")
 
-        choice = Prompt.ask("Your choice", choices=list(options.keys()), default='1')
+        choice = console.prompt("Your choice", default='1')
+        while choice not in options:
+            console.print("Invalid choice. Please try again.", 'red')
+            choice = console.prompt("Your choice", default='1')
 
         # Map choice to content type
         type_map = {
