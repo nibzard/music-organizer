@@ -18,7 +18,7 @@ class ContentType(Enum):
     UNKNOWN = "unknown"
 
 
-@dataclass
+@dataclass(slots=True)
 class AudioFile:
     """Representation of an audio file with its metadata."""
 
@@ -172,7 +172,7 @@ class AudioFile:
             self.title = rest
 
 
-@dataclass
+@dataclass(slots=True)
 class CoverArt:
     """Cover art information for an album."""
     path: Path
