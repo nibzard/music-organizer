@@ -1,0 +1,34 @@
+# Music Organizer Configuration
+
+# Source and target directories
+source_directory: "/path/to/your/music"
+target_directory: "/path/to/organized/music"
+
+# Directory names
+directories:
+  albums: "Albums"
+  live: "Live"
+  collaborations: "Collaborations"
+  compilations: "Compilations"
+  rarities: "Rarities"
+
+# Naming patterns
+naming:
+  album_format: "{artist}/{album} ({year})"
+  live_format: "{artist}/{date} - {location}"
+  collab_format: "{album} ({year}) - {artists}"
+  compilation_format: "{artist}/{album} ({year})"
+  rarity_format: "{artist}/{album} ({edition})"
+
+# Metadata handling
+metadata:
+  enhance: true
+  musicbrainz: true
+  fix_capitalization: true
+  standardize_genres: true
+
+# File operations
+file_operations:
+  strategy: "move"  # or "copy"
+  backup: true
+  handle_duplicates: "number"  # or "skip" or "overwrite"
