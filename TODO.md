@@ -54,7 +54,7 @@
 - [ ] 🟡 Define core domain entities (AudioLibrary, Collection, Release, Recording)
 - [ ] 🟡 Implement bounded contexts (Catalog, Organization, Classification)
 - [ ] 🟡 Create domain services for business logic
-- [ ] 🟢 Add value objects for domain primitives (AudioPath, Metadata)
+- [x] ✅ Add value objects for domain primitives (AudioPath, Metadata)
 
 ### Architecture Improvements
 - [ ] 🟡 Implement anti-corruption layers for external dependencies
@@ -123,6 +123,80 @@
 - [ ] 🟢 Add Spotify playlist import/export
 
 ## 📝 Recent Implementations
+
+### 🏗️ Domain Value Objects (2024-12-11)
+Implemented comprehensive domain value objects following Domain-Driven Design principles:
+
+**Value Objects Created**:
+- **AudioPath**: Immutable representation of audio file paths with domain-specific operations
+  - Validates file paths and formats
+  - Supports all common audio formats (FLAC, MP3, MP4, M4A, WAV, AIFF, OGG, OPUS, WMA)
+  - Provides size information, path operations (with_name, with_suffix, relative_to)
+  - Normalizes paths for consistent comparison
+
+- **ArtistName**: Normalized artist name with sorting support
+  - Whitespace normalization and validation
+  - Smart handling of articles ("The", "A", "An") for alphabetical sorting
+  - Case-insensitive comparison and searching
+  - First-letter extraction for categorization
+
+- **TrackNumber**: Flexible track number parsing and formatting
+  - Handles multiple formats: "5", "5/12", "05", "5 of 12"
+  - Zero-padded formatting with custom width
+  - Validates and normalizes track information
+
+- **Metadata**: Immutable collection of audio metadata
+  - Comprehensive metadata fields (title, artists, album, year, genre, etc.)
+  - Smart inference (is_live, is_compilation, has_multiple_artists)
+  - Formatted string representations
+  - Hash generation for duplicate detection
+  - Validation for all fields (year ranges, technical metadata constraints)
+
+- **ContentPattern**: Pattern matching for content classification
+  - Case-insensitive pattern matching
+  - Priority-based classification
+  - Support for multiple patterns per content type
+
+**Key Features**:
+- **Immutability**: All value objects are frozen dataclasses with slots for performance
+- **Rich Domain Logic**: Domain-specific operations embedded in value objects
+- **Validation**: Comprehensive validation with meaningful error messages
+- **Type Safety**: Full type hints with Optional and Union types
+- **Performance**: Optimized for speed with __slots__ and frozen dataclasses
+
+**Usage Examples**:
+```python
+# Audio path with validation
+path = AudioPath("/music/artist/album/track.flac")
+assert path.format == FileFormat.FLAC
+assert path.size_mb > 0
+
+# Artist name with smart sorting
+artist = ArtistName("The Beatles")
+assert artist.sortable == "Beatles, The"
+
+# Track number from various formats
+track = TrackNumber("5/12")
+assert track.formatted_with_total() == "05/012"
+
+# Rich metadata with validation
+meta = Metadata(
+    title="Song Title",
+    artists=[ArtistName("Artist Name")],
+    year=2023,
+    track_number=TrackNumber(5)
+)
+assert meta.formatted_title() == "05 Song Title"
+
+# Pattern matching
+pattern = ContentPattern("Live", {"live", "concert", "tour"})
+assert pattern.matches("Live at Budokan")
+```
+
+**Key Files**:
+- `src/music_organizer/domain/value_objects.py` - All value object implementations
+- `src/music_organizer/domain/__init__.py` - Domain module exports
+- `tests/test_domain_value_objects.py` - Comprehensive test suite (43 tests)
 
 ### 🚀 Minimal Dependency Refactor (2024-12-11)
 Successfully removed all external dependencies except mutagen:
