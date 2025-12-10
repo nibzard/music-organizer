@@ -31,7 +31,7 @@
 - [x] ✅ Add plugin configuration system with validation
 
 ### Core Plugins
-- [ ] 🟡 Develop MusicBrainz metadata enhancement plugin
+- [x] ✅ Develop MusicBrainz metadata enhancement plugin
 - [ ] 🟡 Create duplicate detection plugin with audio fingerprinting
 - [x] ✅ Implement playlist export plugin (M3U, PLS formats)
 - [ ] 🟢 Add custom naming pattern plugin for user-defined organization rules
@@ -129,6 +129,41 @@ Key files:
 - `src/music_organizer/console_utils.py` - Custom console utilities
 - `src/music_organizer/cli.py` - Refactored CLI using argparse
 - `src/music_organizer/models/config.py` - Dataclass-based configuration
+
+### 🎵 MusicBrainz Metadata Enhancement (2024-12-11)
+Implemented comprehensive MusicBrainz integration for automatic metadata enhancement:
+
+**Plugin Features**:
+- **API Integration**: Full MusicBrainz web service API integration with configurable endpoints
+- **Rate Limiting**: Respects MusicBrainz usage policies with configurable rate limiting (default 1 request/second)
+- **Intelligent Caching**: In-memory caching to avoid redundant API calls for identical tracks
+- **Field Enhancement**: Configurable enhancement fields including year, genre, track_number, and albumartist
+- **Fuzzy Search**: Automatic fallback to fuzzy search when exact matches fail
+- **Error Handling**: Graceful degradation when aiohttp is unavailable or API is unreachable
+- **Batch Processing**: Optimized batch processing with rate limiting awareness
+
+**Configuration**:
+- JSON-based configuration with validation
+- Customizable API endpoint, timeout, and user agent
+- Selective field enhancement to control what metadata is updated
+- Toggle for cache enablement and fuzzy search fallback
+
+**Key Files**:
+- `src/music_organizer/plugins/builtins/musicbrainz_enhancer.py` - Main plugin implementation
+- `tests/test_musicbrainz_plugin.py` - Comprehensive test suite (11 tests)
+- `config/plugins/musicbrainz_enhancer.json` - Plugin configuration
+
+**Usage**:
+The plugin is automatically discovered and can be configured via:
+```json
+{
+  "enabled": true,
+  "enhance_fields": ["year", "genre", "track_number", "albumartist"],
+  "rate_limit": 1.0,
+  "cache_enabled": true,
+  "fallback_to_fuzzy": true
+}
+```
 
 ### ✨ Intelligent Progress Tracking (2024-12-10)
 Implemented comprehensive progress tracking with:
