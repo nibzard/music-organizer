@@ -13,6 +13,13 @@ from .value_objects import (
     Metadata,
     TrackNumber,
 )
+from .entities import (
+    AudioLibrary,
+    Collection,
+    DuplicateResolutionMode,
+    Recording,
+    Release,
+)
 
 __all__ = [
     "AudioPath",
@@ -21,4 +28,9 @@ __all__ = [
     "FileFormat",
     "Metadata",
     "TrackNumber",
+    "AudioLibrary",
+    "Collection",
+    "DuplicateResolutionMode",
+    "Recording",
+    "Release",
 ]
