@@ -112,7 +112,9 @@ class AsyncMusicCLI:
                       dry_run: bool = False,
                       interactive: bool = False,
                       backup: bool = True,
-                      max_workers: int = 4) -> int:
+                      max_workers: int = 4,
+                      use_cache: bool = True,
+                      cache_ttl: Optional[int] = None) -> int:
         """Organize music files asynchronously."""
         try:
             # Load configuration
@@ -138,7 +140,9 @@ class AsyncMusicCLI:
                 config,
                 dry_run=dry_run,
                 interactive=interactive,
-                max_workers=max_workers
+                max_workers=max_workers,
+                use_cache=use_cache,
+                cache_ttl=cache_ttl
             ) as organizer:
 
                 self.console.print(f"\n🎵 Music Organizer (Async Mode)")
@@ -146,6 +150,10 @@ class AsyncMusicCLI:
                 self.console.print(f"Target: {target}")
                 self.console.print(f"Mode: {'DRY RUN' if dry_run else 'LIVE'}")
                 self.console.print(f"Workers: {max_workers}")
+                self.console.print(f"Cache: {'ENABLED' if use_cache else 'DISABLED'}")
+                if use_cache:
+                    ttl_str = f"{cache_ttl} days" if cache_ttl else "30 days (default)"
+                    self.console.print(f"Cache TTL: {ttl_str}")
 
                 # Count total files first
                 self.console.print("\n🔍 Scanning files...")
@@ -220,9 +228,21 @@ class AsyncMusicCLI:
                         self.console.print(f"  ... and {len(results['errors']) - 10} more errors", 'red')
 
                 # Get operation summary
+                summary = await organizer.get_operation_summary()
                 if not dry_run:
-                    summary = await organizer.get_operation_summary()
                     self.console.print(f"\n💾 Directories created: {summary.get('directories_created', 0)}")
+
+                # Show cache statistics
+                if 'cache' in summary:
+                    cache_stats = summary['cache']
+                    self.console.print("\n📋 Cache Statistics:")
+                    self.console.print(f"  Cache hits: {cache_stats.get('cache_hits', 0)}")
+                    self.console.print(f"  Cache misses: {cache_stats.get('cache_misses', 0)}")
+                    hit_rate = cache_stats.get('hit_rate', 0) * 100
+                    self.console.print(f"  Hit rate: {hit_rate:.1f}%")
+                    self.console.print(f"  Valid entries: {cache_stats.get('valid_entries', 0)}")
+                    self.console.print(f"  Expired entries: {cache_stats.get('expired_entries', 0)}")
+                    self.console.print(f"  Cache size: {cache_stats.get('size_mb', 0):.2f} MB")
 
                 return 0
 
@@ -360,6 +380,54 @@ class AsyncMusicCLI:
             size_bytes /= 1024.0
         return f"{size_bytes:.1f} PB"
 
+    async def handle_cache_command(self, command: str, confirm: bool = False) -> int:
+        """Handle cache management commands."""
+        from .core.cached_metadata import get_cached_metadata_handler
+
+        cache_handler = get_cached_metadata_handler()
+
+        if command == 'stats':
+            stats = cache_handler.get_cache_stats()
+            self.console.rule("📋 Cache Statistics")
+
+            stats_data = [
+                ["Total entries", str(stats.get('total_entries', 0))],
+                ["Valid entries", str(stats.get('valid_entries', 0))],
+                ["Expired entries", str(stats.get('expired_entries', 0))],
+                ["Cache size", f"{stats.get('size_mb', 0):.2f} MB"],
+                ["Cache hits", str(stats.get('cache_hits', 0))],
+                ["Cache misses", str(stats.get('cache_misses', 0))],
+            ]
+
+            hit_rate = stats.get('hit_rate', 0) * 100
+            stats_data.append(["Hit rate", f"{hit_rate:.1f}%"])
+
+            self.console.table(stats_data, ["Metric", "Value"])
+
+        elif command == 'cleanup':
+            self.console.print("🧹 Cleaning up expired cache entries...")
+            removed = cache_handler.cleanup_expired()
+            if removed > 0:
+                self.console.print(f"✅ Removed {removed} expired entries", 'green')
+            else:
+                self.console.print("✅ No expired entries found", 'green')
+
+        elif command == 'clear':
+            if not confirm:
+                self.console.print("⚠️  This will clear ALL cache entries", 'yellow')
+                self.console.print("Use --confirm to proceed", 'yellow')
+                return 1
+
+            self.console.print("🗑️  Clearing all cache entries...")
+            cache_handler.clear_cache()
+            self.console.print("✅ Cache cleared successfully", 'green')
+
+        else:
+            self.console.print(f"Unknown cache command: {command}", 'red')
+            return 1
+
+        return 0
+
 
 def create_async_cli():
     """Create the async CLI interface."""
@@ -381,6 +449,9 @@ def create_async_cli():
     org_parser.add_argument('--interactive', action='store_true', help='Prompt for ambiguous categorizations')
     org_parser.add_argument('--no-backup', action='store_true', help='Disable backup creation')
     org_parser.add_argument('--workers', type=int, default=4, help='Number of worker threads (default: 4)')
+    org_parser.add_argument('--cache', action='store_true', default=True, help='Enable metadata caching (default: enabled)')
+    org_parser.add_argument('--no-cache', action='store_true', help='Disable metadata caching')
+    org_parser.add_argument('--cache-ttl', type=int, help='Cache TTL in days (default: 30)')
     org_parser.add_argument('--debug', action='store_true', help='Enable debug output')
 
     # Scan command
@@ -389,6 +460,20 @@ def create_async_cli():
     scan_parser.add_argument('--config', type=Path, help='Configuration file path')
     scan_parser.add_argument('--detailed', action='store_true', help='Include detailed analysis')
     scan_parser.add_argument('--debug', action='store_true', help='Enable debug output')
+
+    # Cache command
+    cache_parser = subparsers.add_parser('cache', help='Manage metadata cache')
+    cache_subparsers = cache_parser.add_subparsers(dest='cache_command', help='Cache operations')
+
+    # Cache stats
+    cache_subparsers.add_parser('stats', help='Show cache statistics')
+
+    # Cache cleanup
+    cleanup_parser = cache_subparsers.add_parser('cleanup', help='Clean up expired cache entries')
+
+    # Cache clear
+    clear_parser = cache_subparsers.add_parser('clear', help='Clear all cache entries')
+    clear_parser.add_argument('--confirm', action='store_true', help='Confirm clearing all cache')
 
     # Add version
     parser.add_argument('--version', action='version', version='%(prog)s 0.1.0')
@@ -412,7 +497,9 @@ def create_async_cli():
             dry_run=args.dry_run,
             interactive=args.interactive,
             backup=not args.no_backup,
-            max_workers=args.workers
+            max_workers=args.workers,
+            use_cache=not args.no_cache,
+            cache_ttl=args.cache_ttl
         ))
     elif args.command == 'scan':
         return asyncio.run(cli.scan(
@@ -420,6 +507,14 @@ def create_async_cli():
             config_path=args.config,
             detailed=args.detailed
         ))
+    elif args.command == 'cache':
+        if hasattr(args, 'cache_command') and args.cache_command:
+            return asyncio.run(cli.handle_cache_command(
+                command=args.cache_command,
+                confirm=getattr(args, 'confirm', False)
+            ))
+        else:
+            parser.error("Cache command required")
 
     return 0
 

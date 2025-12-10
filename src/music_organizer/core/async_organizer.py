@@ -4,12 +4,14 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import List, Dict, Any, Optional, AsyncGenerator, Tuple
+from datetime import timedelta
 import logging
 
 from ..models.audio_file import AudioFile, CoverArt, ContentType
 from ..models.config import Config
 from ..exceptions import MusicOrganizerError
 from .metadata import MetadataHandler
+from .cached_metadata import CachedMetadataHandler
 from .classifier import ContentClassifier
 from .async_mover import AsyncFileMover, AsyncDirectoryOrganizer
 
@@ -23,12 +25,32 @@ class AsyncMusicOrganizer:
                  config: Config,
                  dry_run: bool = False,
                  interactive: bool = False,
-                 max_workers: int = 4):
+                 max_workers: int = 4,
+                 use_cache: bool = True,
+                 cache_ttl: Optional[int] = None):
+        """
+        Initialize the async music organizer.
+
+        Args:
+            config: Configuration object
+            dry_run: Whether to perform a dry run (default: False)
+            interactive: Whether to enable interactive mode (default: False)
+            max_workers: Maximum number of worker threads (default: 4)
+            use_cache: Whether to use metadata caching (default: True)
+            cache_ttl: Cache TTL in days (default: 30)
+        """
         self.config = config
         self.dry_run = dry_run
         self.interactive = interactive
         self.max_workers = max_workers
-        self.metadata_handler = MetadataHandler()
+        self.use_cache = use_cache
+
+        # Use cached metadata handler if enabled
+        if self.use_cache:
+            self.metadata_handler = CachedMetadataHandler(ttl=timedelta(days=cache_ttl or 30))
+        else:
+            self.metadata_handler = MetadataHandler()
+
         self.classifier = ContentClassifier()
         self.file_mover = AsyncFileMover(
             backup_enabled=config.file_operations.backup,
@@ -202,9 +224,12 @@ class AsyncMusicOrganizer:
 
     async def _process_file(self, file_path: Path) -> Optional[AudioFile]:
         """Process a single audio file asynchronously."""
-        # Extract metadata
+        # Extract metadata (with cache if enabled)
         def _extract_metadata():
-            return self.metadata_handler.extract_metadata(file_path)
+            if self.use_cache:
+                return self.metadata_handler.extract_metadata(file_path, use_cache=True)
+            else:
+                return self.metadata_handler.extract_metadata(file_path)
 
         audio_file = await asyncio.get_event_loop().run_in_executor(
             None, _extract_metadata
@@ -352,7 +377,31 @@ class AsyncMusicOrganizer:
 
     async def get_operation_summary(self) -> Dict[str, Any]:
         """Get a summary of the operations performed."""
-        return await self.file_mover.get_operation_summary()
+        summary = await self.file_mover.get_operation_summary()
+
+        # Add cache stats if caching is enabled
+        if self.use_cache:
+            cache_stats = self.metadata_handler.get_cache_stats()
+            summary['cache'] = cache_stats
+
+        return summary
+
+    def cleanup_cache(self) -> int:
+        """Clean up expired cache entries."""
+        if self.use_cache:
+            return self.metadata_handler.cleanup_expired()
+        return 0
+
+    def get_cache_stats(self) -> Optional[Dict[str, Any]]:
+        """Get cache statistics."""
+        if self.use_cache:
+            return self.metadata_handler.get_cache_stats()
+        return None
+
+    def clear_cache(self) -> None:
+        """Clear all cache entries."""
+        if self.use_cache:
+            self.metadata_handler.clear_cache()
 
     async def __aenter__(self):
         return self
