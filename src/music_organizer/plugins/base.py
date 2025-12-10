@@ -172,6 +172,70 @@ class OutputPlugin(Plugin):
         pass
 
 
+class PathPlugin(Plugin):
+    """Base class for custom path and naming pattern plugins."""
+
+    @abstractmethod
+    async def generate_target_path(self, audio_file: AudioFile, base_dir: Path) -> Path:
+        """Generate target directory path for an audio file.
+
+        Args:
+            audio_file: The audio file to generate path for
+            base_dir: Base directory for organized music
+
+        Returns:
+            Target directory path (not including filename)
+        """
+        pass
+
+    @abstractmethod
+    async def generate_filename(self, audio_file: AudioFile) -> str:
+        """Generate filename for an audio file.
+
+        Args:
+            audio_file: The audio file to generate filename for
+
+        Returns:
+            Filename (including extension but not path)
+        """
+        pass
+
+    def get_supported_variables(self) -> List[str]:
+        """Return list of supported template variables.
+
+        Examples: ['artist', 'album', 'year', 'track_number', 'title', 'genre']
+        """
+        return [
+            'artist', 'artists', 'primary_artist',
+            'album', 'year', 'track_number', 'title',
+            'genre', 'duration', 'bitrate', 'format',
+            'content_type', 'date', 'location'
+        ]
+
+    async def batch_generate_paths(self, audio_files: List[AudioFile], base_dir: Path) -> List[Path]:
+        """Generate paths for multiple audio files.
+
+        Default implementation processes files sequentially.
+        Override for batch processing optimizations.
+
+        Args:
+            audio_files: List of audio files to generate paths for
+            base_dir: Base directory for organized music
+
+        Returns:
+            List of target directory paths
+        """
+        paths = []
+        for audio_file in audio_files:
+            if self.enabled:
+                path = await self.generate_target_path(audio_file, base_dir)
+                paths.append(path)
+            else:
+                # Fall back to default behavior
+                paths.append(audio_file.get_target_path(base_dir))
+        return paths
+
+
 # Protocol for plugin discovery
 class PluginFactory(Protocol):
     """Protocol for plugin factory functions."""

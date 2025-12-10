@@ -1,0 +1,69 @@
+{
+  "enabled": true,
+  "description": "Custom naming patterns for flexible music organization",
+  "version": "1.0.0",
+
+  "filename_pattern": "{track_number} {title}{file_extension}",
+  "fallback_to_default": true,
+
+  "path_patterns": {
+    "default": "{content_type}/{artist}/{album} ({year})",
+    "studio": "Albums/{artist}/{album} ({year})",
+    "live": "Live/{artist}/{date} - {location}",
+    "collaboration": "Collaborations/{album} ({year}) - {artists}",
+    "compilation": "Compilations/{artist}/{album} ({year})",
+    "rarity": "Rarities/{artist}/{album}",
+
+    "genre_examples": {
+      "rock": "Rock/{artist}/{album} ({year})",
+      "jazz": "Jazz/{artist}/{album} ({year})",
+      "classical": "Classical/{composer}/{album} ({year})",
+      "electronic": "Electronic/{artist}/{album} ({year})",
+      "hip_hop": "Hip-Hop/{artist}/{album} ({year})",
+      "soundtrack": "Soundtracks/{album} ({year})"
+    }
+  },
+
+  "additional_organization": {
+    "create_date_dirs": false,
+    "organize_by_genre": false,
+    "organize_by_decade": false,
+    "organize_by_first_letter": false
+  },
+
+  "examples": {
+    "simple_flat": "{artist} - {album}",
+    "with_year": "{artist}/{album} ({year})",
+    "with_genre": "{genre}/{artist}/{album}",
+    "with_decade": "{decade}/{artist}/{album}",
+    "artist_first_letter": "{first_letter}/{artist}/{album}",
+    "conditional_example": "{artist}/{album}{if:year} ({year}){endif}",
+    "complex_example": "{if:albumartist}{albumartist}{else}{artist}{endif}/{album}{if:year} ({year}){endif}",
+    "soundtrack_example": "Soundtracks/{album}{if:year} ({year}){endif}",
+    "compilation_example": "Compilations/{albumartist}/{album} ({year})"
+  },
+
+  "variables_documentation": {
+    "artist": "Primary artist or first artist in the list",
+    "artists": "All artists joined by comma",
+    "primary_artist": "The primary artist if set",
+    "album": "Album name",
+    "year": "Release year",
+    "track_number": "Track number with zero padding (01, 02, etc.)",
+    "title": "Track title",
+    "genre": "Music genre",
+    "duration": "Duration in seconds",
+    "bitrate": "Audio bitrate",
+    "format": "Audio format (MP3, FLAC, etc.)",
+    "content_type": "Type of content (studio, live, collaboration, etc.)",
+    "date": "Date for live recordings",
+    "location": "Location for live recordings",
+    "albumartist": "Album artist from metadata",
+    "disc_number": "Disc number with zero padding",
+    "total_discs": "Total number of discs",
+    "total_tracks": "Total number of tracks",
+    "first_letter": "First letter of artist name",
+    "decade": "Decade based on year (e.g., 1980s)",
+    "file_extension": "File extension including dot (.mp3, .flac, etc.)"
+  }
+}
