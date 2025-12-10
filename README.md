@@ -25,9 +25,26 @@ A Python-based music library organizer that uses metadata-aware categorization t
 
 ### Quick Setup
 
+#### Option 1: Use with uvx (Recommended - No Installation Required!)
+
+You can run music-organizer directly from the GitHub repository using uvx:
+
+```bash
+# Organize music directly from GitHub
+uvx gh:nibzard/music-organizer organize /path/to/unorganized/music /path/to/organized/music
+
+# Scan your music library
+uvx gh:nibzard/music-organizer scan /path/to/music
+
+# Dry run to see what would happen
+uvx gh:nibzard/music-organizer organize /path/to/music /path/to/organized --dry-run
+```
+
+#### Option 2: Clone and Install Locally
+
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/music-organizer.git
+git clone https://github.com/nibzard/music-organizer.git
 cd music-organizer
 
 # Install dependencies with uv
@@ -53,6 +70,22 @@ powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 
 ### Basic Usage
 
+#### With uvx (Easiest - No local installation needed)
+```bash
+# Scan your music library
+uvx gh:nibzard/music-organizer scan /path/to/music
+
+# Dry run to see what would happen (no changes made!)
+uvx gh:nibzard/music-organizer organize /path/to/music /path/to/organized --dry-run
+
+# Organize your music
+uvx gh:nibzard/music-organizer organize /path/to/music /path/to/organized
+
+# Interactive mode for ambiguous cases
+uvx gh:nibzard/music-organizer organize /path/to/music /path/to/organized --interactive
+```
+
+#### With Local Installation
 ```bash
 # From the music-organizer directory, run:
 ./mo organize /path/to/unorganized/music /path/to/organized/music
@@ -72,16 +105,16 @@ music-organize organize /path/to/unorganized/music /path/to/organized/music
 
 ```bash
 # 1. First, scan your music library to understand what you have
-./mo scan /path/to/music
+uvx gh:nibzard/music-organizer scan /path/to/music
 
 # 2. Do a dry run to see what would happen (no changes made!)
-./mo organize /path/to/music /path/to/organized --dry-run
+uvx gh:nibzard/music-organizer organize /path/to/music /path/to/organized --dry-run
 
 # 3. Review the output, then run the actual organization
-./mo organize /path/to/music /path/to/organized
+uvx gh:nibzard/music-organizer organize /path/to/music /path/to/organized
 
 # 4. Use interactive mode for ambiguous cases
-./mo organize /path/to/music /path/to/organized --interactive
+uvx gh:nibzard/music-organizer organize /path/to/music /path/to/organized --interactive
 ```
 
 ## 📋 Command Reference
