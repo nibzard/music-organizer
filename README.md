@@ -465,7 +465,6 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 
 ## 📞 Support
 
-- 📧 Email: your.email@example.com
 - 🐛 Issues: [GitHub Issues](https://github.com/yourusername/music-organizer/issues)
 - 💬 Discussions: [GitHub Discussions](https://github.com/yourusername/music-organizer/discussions)
 

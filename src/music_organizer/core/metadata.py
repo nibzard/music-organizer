@@ -78,12 +78,17 @@ class MetadataHandler:
                 unique_artists.append(artist)
         audio_file.artists = unique_artists
 
-        # For collaborations, use both artists
-        if len(audio_file.artists) > 1:
-            audio_file.primary_artist = ", ".join(audio_file.artists)
+        # Check for ALBUMARTIST first (this is the primary artist of the album)
+        albumartist = MetadataHandler._get_single_field(tags, ['ALBUMARTIST'])
+        if albumartist:
+            audio_file.primary_artist = albumartist
         else:
-            audio_file.primary_artist = MetadataHandler._get_single_field(tags, ['ALBUMARTIST']) or \
-                                       (audio_file.artists[0] if audio_file.artists else None)
+            # If no album artist, determine if this is a collaboration
+            # by checking if the first artist is likely the primary
+            if audio_file.artists:
+                # For now, use the first artist as primary
+                # The classifier will determine if it's actually a collaboration
+                audio_file.primary_artist = audio_file.artists[0]
         audio_file.album = MetadataHandler._get_single_field(tags, ['ALBUM'])
         audio_file.title = MetadataHandler._get_single_field(tags, ['TITLE'])
         audio_file.genre = MetadataHandler._get_single_field(tags, ['GENRE'])

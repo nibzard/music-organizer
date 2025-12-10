@@ -72,9 +72,11 @@ class AudioFile:
             return base_dir / "Live" / artist / f"{self.date} - {location}"
 
         elif self.content_type == ContentType.COLLABORATION:
-            artists_str = ", ".join(self.artists[:3])  # Limit to 3 artists
-            if len(self.artists) > 3:
-                artists_str += " et al."
+            # For collaborations, include all artists (but limit to 3 for readability)
+            if len(self.artists) <= 3:
+                artists_str = ", ".join(self.artists)
+            else:
+                artists_str = ", ".join(self.artists[:3]) + " et al."
             album = self.album or "Unknown Album"
             year_str = f" ({self.year})" if self.year else ""
             return base_dir / "Collaborations" / f"{album}{year_str} - {artists_str}"
