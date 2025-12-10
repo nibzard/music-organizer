@@ -1,0 +1,10 @@
+{
+  "enabled": true,
+  "api_url": "https://musicbrainz.org/ws/2",
+  "user_agent": "music-organizer/1.0.0 (https://github.com/nibzard/music-organizer)",
+  "timeout": 10.0,
+  "rate_limit": 1.0,
+  "enhance_fields": ["year", "genre", "track_number", "albumartist"],
+  "fallback_to_fuzzy": true,
+  "cache_enabled": true
+}
