@@ -25,19 +25,19 @@ A Python-based music library organizer that uses metadata-aware categorization t
 
 ### Quick Setup
 
-#### Option 1: Use with uvx (Recommended - No Installation Required!)
+#### Option 1: Use with uvx (Once published to PyPI)
 
-You can run music-organizer directly from the GitHub repository using uvx:
+**Note**: The tool is not yet published to PyPI. Once published, you'll be able to run music-organizer directly using uvx:
 
 ```bash
-# Organize music directly from GitHub
-uvx gh:nibzard/music-organizer organize /path/to/unorganized/music /path/to/organized/music
+# Organize music directly from PyPI (coming soon)
+uvx music-organizer organize /path/to/unorganized/music /path/to/organized/music
 
 # Scan your music library
-uvx gh:nibzard/music-organizer scan /path/to/music
+uvx music-organizer scan /path/to/music
 
 # Dry run to see what would happen
-uvx gh:nibzard/music-organizer organize /path/to/music /path/to/organized --dry-run
+uvx music-organizer organize /path/to/music /path/to/organized --dry-run
 ```
 
 #### Option 2: Clone and Install Locally
@@ -70,19 +70,20 @@ powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 
 ### Basic Usage
 
-#### With uvx (Easiest - No local installation needed)
+#### With uvx (Once published to PyPI)
+
 ```bash
 # Scan your music library
-uvx gh:nibzard/music-organizer scan /path/to/music
+uvx music-organizer scan /path/to/music
 
 # Dry run to see what would happen (no changes made!)
-uvx gh:nibzard/music-organizer organize /path/to/music /path/to/organized --dry-run
+uvx music-organizer organize /path/to/music /path/to/organized --dry-run
 
 # Organize your music
-uvx gh:nibzard/music-organizer organize /path/to/music /path/to/organized
+uvx music-organizer organize /path/to/music /path/to/organized
 
 # Interactive mode for ambiguous cases
-uvx gh:nibzard/music-organizer organize /path/to/music /path/to/organized --interactive
+uvx music-organizer organize /path/to/music /path/to/organized --interactive
 ```
 
 #### With Local Installation
@@ -105,16 +106,16 @@ music-organize organize /path/to/unorganized/music /path/to/organized/music
 
 ```bash
 # 1. First, scan your music library to understand what you have
-uvx gh:nibzard/music-organizer scan /path/to/music
+uvx music-organizer scan /path/to/music
 
 # 2. Do a dry run to see what would happen (no changes made!)
-uvx gh:nibzard/music-organizer organize /path/to/music /path/to/organized --dry-run
+uvx music-organizer organize /path/to/music /path/to/organized --dry-run
 
 # 3. Review the output, then run the actual organization
-uvx gh:nibzard/music-organizer organize /path/to/music /path/to/organized
+uvx music-organizer organize /path/to/music /path/to/organized
 
 # 4. Use interactive mode for ambiguous cases
-uvx gh:nibzard/music-organizer organize /path/to/music /path/to/organized --interactive
+uvx music-organizer organize /path/to/music /path/to/organized --interactive
 ```
 
 ## 📋 Command Reference
