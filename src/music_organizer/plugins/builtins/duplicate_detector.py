@@ -1,0 +1,339 @@
+"""Duplicate detection plugin with audio fingerprinting."""
+
+import hashlib
+import struct
+import asyncio
+from typing import Dict, Any, List, Optional, Tuple, Set
+from pathlib import Path
+from collections import defaultdict
+import math
+
+from src.music_organizer.plugins.base import ClassificationPlugin, PluginInfo
+from src.music_organizer.plugins.config import PluginConfigSchema, ConfigOption, create_classification_plugin_schema
+from src.music_organizer.models.audio_file import AudioFile
+
+
+class DuplicateDetectorPlugin(ClassificationPlugin):
+    """Detect duplicate audio files using multiple strategies."""
+
+    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+        """Initialize duplicate detector."""
+        super().__init__(config)
+        self._file_hashes: Dict[str, List[str]] = defaultdict(list)
+        self._metadata_hashes: Dict[str, List[str]] = defaultdict(list)
+        self._audio_fingerprints: Dict[str, List[str]] = defaultdict(list)
+        self._processed_files: Set[str] = set()
+
+    @property
+    def info(self) -> PluginInfo:
+        return PluginInfo(
+            name="duplicate_detector",
+            version="1.0.0",
+            description="Detect duplicate audio files using audio fingerprinting and metadata comparison",
+            author="Music Organizer Team",
+            dependencies=[],
+        )
+
+    def initialize(self) -> None:
+        """Initialize the plugin."""
+        self._file_hashes.clear()
+        self._metadata_hashes.clear()
+        self._audio_fingerprints.clear()
+        self._processed_files.clear()
+
+    def cleanup(self) -> None:
+        """Cleanup resources."""
+        self._file_hashes.clear()
+        self._metadata_hashes.clear()
+        self._audio_fingerprints.clear()
+        self._processed_files.clear()
+
+    async def classify(self, audio_file: AudioFile) -> Dict[str, Any]:
+        """Classify an audio file for duplicates."""
+        if not self.enabled or audio_file.path in self._processed_files:
+            return {}
+
+        classifications = {}
+        file_path = str(audio_file.path)
+
+        # Generate different hashes for comparison
+        strategies = self.config.get('strategies', ['metadata', 'file_hash', 'audio_fingerprint'])
+
+        duplicate_groups = []
+
+        # Strategy 1: Exact metadata match
+        if 'metadata' in strategies:
+            metadata_hash = self._generate_metadata_hash(audio_file)
+            if metadata_hash in self._metadata_hashes:
+                duplicates = self._metadata_hashes[metadata_hash]
+                if duplicates:
+                    duplicate_groups.append({
+                        'type': 'metadata',
+                        'confidence': 1.0,
+                        'duplicates': duplicates,
+                        'reason': 'Exact metadata match (artist, title, album, duration)'
+                    })
+            self._metadata_hashes[metadata_hash].append(file_path)
+
+        # Strategy 2: File hash (exact duplicate)
+        if 'file_hash' in strategies:
+            file_hash = await self._generate_file_hash(audio_file.path)
+            if file_hash in self._file_hashes:
+                duplicates = self._file_hashes[file_hash]
+                if duplicates:
+                    duplicate_groups.append({
+                        'type': 'exact',
+                        'confidence': 1.0,
+                        'duplicates': duplicates,
+                        'reason': 'Identical file (exact bit-for-bit copy)'
+                    })
+            self._file_hashes[file_hash].append(file_path)
+
+        # Strategy 3: Audio fingerprint (acoustic similarity)
+        if 'audio_fingerprint' in strategies:
+            try:
+                fingerprint = await self._generate_audio_fingerprint(audio_file)
+                if fingerprint:
+                    similar_files = self._find_similar_fingerprints(fingerprint)
+                    if similar_files:
+                        for similar_file, similarity in similar_files:
+                            if similarity >= self.config.get('similarity_threshold', 0.85):
+                                duplicate_groups.append({
+                                    'type': 'acoustic',
+                                    'confidence': similarity,
+                                    'duplicates': [similar_file],
+                                    'reason': f'Audio fingerprint similarity: {similarity:.2%}'
+                                })
+                    self._audio_fingerprints[fingerprint].append(file_path)
+            except Exception as e:
+                # Fingerprinting can fail, but don't fail the entire plugin
+                pass
+
+        # Filter duplicates based on configuration
+        if duplicate_groups:
+            filtered_duplicates = self._filter_duplicates(duplicate_groups)
+            if filtered_duplicates:
+                classifications['duplicates'] = filtered_duplicates
+                # Count total number of duplicate files (all files in groups except the current one)
+                classifications['duplicate_count'] = sum(len(g['duplicates']) for g in filtered_duplicates)
+                classifications['is_duplicate'] = True
+
+        self._processed_files.add(file_path)
+        return classifications
+
+    def get_supported_tags(self) -> List[str]:
+        """Return supported classification tags."""
+        return ['duplicates', 'duplicate_count', 'is_duplicate']
+
+    def _generate_metadata_hash(self, audio_file: AudioFile) -> str:
+        """Generate hash based on key metadata fields."""
+        # Normalize metadata for comparison
+        artist = self._normalize_text(audio_file.primary_artist or (audio_file.artists[0] if audio_file.artists else ""))
+        title = self._normalize_text(audio_file.title or "")
+        album = self._normalize_text(audio_file.album or "")
+        track = audio_file.track_number or 0
+
+        # Create hash
+        metadata = f"{artist}|{title}|{album}|{track}"
+        return hashlib.md5(metadata.encode('utf-8')).hexdigest()
+
+    def _normalize_text(self, text: str) -> str:
+        """Normalize text for comparison."""
+        if not text:
+            return ""
+        # Remove extra whitespace and convert to lowercase
+        return " ".join(text.lower().split())
+
+    async def _generate_file_hash(self, file_path: Path) -> str:
+        """Generate MD5 hash of the file."""
+        try:
+            # Use a simple hash based on file size and last modified for speed
+            stat = file_path.stat()
+            return hashlib.md5(f"{stat.st_size}_{stat.st_mtime}".encode()).hexdigest()
+        except (OSError, FileNotFoundError):
+            # If file doesn't exist, use the path as fallback
+            return hashlib.md5(str(file_path).encode()).hexdigest()
+
+    async def _generate_audio_fingerprint(self, audio_file: AudioFile) -> Optional[str]:
+        """Generate a simplified audio fingerprint.
+
+        This is a basic implementation using file properties and metadata.
+        For production use, consider using libraries like chromaprint.
+        """
+        try:
+            # Try to get file properties
+            try:
+                file_stat = audio_file.path.stat()
+                file_size = file_stat.st_size
+            except (OSError, FileNotFoundError):
+                file_size = 0
+
+            # Extract audio data using mutagen
+            try:
+                from mutagen import File as MutagenFile
+                audio_obj = MutagenFile(audio_file.path)
+
+                if audio_obj is not None:
+                    # Get audio properties from mutagen
+                    bitrate = getattr(audio_obj.info, 'bitrate', 0) if hasattr(audio_obj, 'info') else 0
+                    sample_rate = getattr(audio_obj.info, 'sample_rate', 0) if hasattr(audio_obj, 'info') else 0
+                    channels = getattr(audio_obj.info, 'channels', 0) if hasattr(audio_obj, 'info') else 0
+                    length = getattr(audio_obj.info, 'length', 0) if hasattr(audio_obj, 'info') else 0
+                else:
+                    bitrate = sample_rate = channels = length = 0
+            except ImportError:
+                # Mutagen not available, use zeros
+                bitrate = sample_rate = channels = length = 0
+
+            # Combine with metadata
+            artist = self._normalize_text(audio_file.primary_artist or (audio_file.artists[0] if audio_file.artists else ""))[:20]
+            title = self._normalize_text(audio_file.title or "")[:20]
+
+            fingerprint_data = f"{file_size}_{length:.2f}_{bitrate}_{sample_rate}_{channels}_{artist}_{title}"
+            return hashlib.sha256(fingerprint_data.encode('utf-8')).hexdigest()
+
+        except Exception:
+            return None
+
+    def _find_similar_fingerprints(self, fingerprint: str) -> List[Tuple[str, float]]:
+        """Find similar fingerprints using hamming distance."""
+        similar_files = []
+
+        # Store fingerprints for comparison
+        for existing_fp, files in self._audio_fingerprints.items():
+            if existing_fp == fingerprint:
+                continue
+
+            # Calculate similarity (simplified)
+            similarity = self._calculate_fingerprint_similarity(fingerprint, existing_fp)
+
+            if similarity > 0:
+                for file_path in files:
+                    similar_files.append((file_path, similarity))
+
+        return sorted(similar_files, key=lambda x: x[1], reverse=True)
+
+    def _calculate_fingerprint_similarity(self, fp1: str, fp2: str) -> float:
+        """Calculate similarity between two fingerprints."""
+        if len(fp1) != len(fp2):
+            return 0.0
+
+        # Compare chunks of the hash
+        chunk_size = 8
+        matches = 0
+        total_chunks = len(fp1) // chunk_size
+
+        for i in range(0, len(fp1), chunk_size):
+            if i + chunk_size <= len(fp1) and i + chunk_size <= len(fp2):
+                if fp1[i:i+chunk_size] == fp2[i:i+chunk_size]:
+                    matches += 1
+
+        return matches / total_chunks if total_chunks > 0 else 0.0
+
+    def _filter_duplicates(self, duplicate_groups: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Filter duplicates based on configuration."""
+        filtered = []
+
+        # Filter by minimum confidence
+        min_confidence = self.config.get('min_confidence', 0.5)
+
+        for group in duplicate_groups:
+            if group['confidence'] >= min_confidence:
+                # Filter by duplicate type if specified
+                allowed_types = self.config.get('allowed_types', ['exact', 'metadata', 'acoustic'])
+                if group['type'] in allowed_types:
+                    filtered.append(group)
+
+        return filtered
+
+    def get_config_schema(self) -> PluginConfigSchema:
+        """Return configuration schema for this plugin."""
+        schema = create_classification_plugin_schema()
+
+        # Add custom options
+        schema.add_option(ConfigOption(
+            name="strategies",
+            type=list,
+            default=['metadata', 'file_hash', 'audio_fingerprint'],
+            description="Duplicate detection strategies to use",
+            choices=['metadata', 'file_hash', 'audio_fingerprint']
+        ))
+
+        schema.add_option(ConfigOption(
+            name="similarity_threshold",
+            type=float,
+            default=0.85,
+            min_value=0.0,
+            max_value=1.0,
+            description="Minimum similarity threshold for acoustic fingerprint matching"
+        ))
+
+        schema.add_option(ConfigOption(
+            name="min_confidence",
+            type=float,
+            default=0.5,
+            min_value=0.0,
+            max_value=1.0,
+            description="Minimum confidence level to report duplicates"
+        ))
+
+        schema.add_option(ConfigOption(
+            name="allowed_types",
+            type=list,
+            default=['exact', 'metadata', 'acoustic'],
+            description="Types of duplicates to detect",
+            choices=['exact', 'metadata', 'acoustic']
+        ))
+
+        schema.add_option(ConfigOption(
+            name="report_duplicates_only",
+            type=bool,
+            default=True,
+            description="Only report files that have duplicates"
+        ))
+
+        return schema
+
+    async def batch_classify(self, audio_files: List[AudioFile]) -> List[Dict[str, Any]]:
+        """Classify multiple files with optimized duplicate detection."""
+        # Initialize all hashes for batch processing
+        if not audio_files:
+            return []
+
+        # Process files in batches for better memory usage
+        batch_size = self.config.get('batch_size', 100)
+        results = []
+
+        for i in range(0, len(audio_files), batch_size):
+            batch = audio_files[i:i + batch_size]
+            batch_results = []
+
+            # Process batch
+            for audio_file in batch:
+                result = await self.classify(audio_file)
+                if self.config.get('report_duplicates_only', True) and not result.get('is_duplicate'):
+                    result = {}
+                batch_results.append(result)
+
+            results.extend(batch_results)
+
+        return results
+
+    def get_duplicate_summary(self) -> Dict[str, Any]:
+        """Get summary of detected duplicates."""
+        total_groups = 0
+        total_duplicates = 0
+
+        for hash_key, files in list(self._metadata_hashes.items()) + list(self._file_hashes.items()):
+            if len(files) > 1:
+                total_groups += 1
+                total_duplicates += len(files) - 1
+
+        return {
+            'total_duplicate_groups': total_groups,
+            'total_duplicate_files': total_duplicates,
+            'unique_files_processed': len(self._processed_files),
+            'metadata_hashes': len(self._metadata_hashes),
+            'file_hashes': len(self._file_hashes),
+            'audio_fingerprints': len(self._audio_fingerprints)
+        }

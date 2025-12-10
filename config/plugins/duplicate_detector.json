@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "strategies": ["metadata", "file_hash", "audio_fingerprint"],
+  "similarity_threshold": 0.85,
+  "min_confidence": 0.5,
+  "allowed_types": ["exact", "metadata", "acoustic"],
+  "report_duplicates_only": true,
+  "batch_size": 100,
+  "confidence_threshold": 0.5,
+  "tags": ["duplicates", "duplicate_count", "is_duplicate"]
+}
