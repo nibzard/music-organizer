@@ -80,8 +80,7 @@ class ScanTracker:
                     last_scanned TIMESTAMP NOT NULL,
                     scan_id TEXT NOT NULL,
                     hash_checksum TEXT,
-                    directory_path TEXT NOT NULL,
-                    INDEX(directory_path)
+                    directory_path TEXT NOT NULL
                 )
             """)
 
@@ -95,9 +94,7 @@ class ScanTracker:
                     files_scanned INTEGER DEFAULT 0,
                     files_modified INTEGER DEFAULT 0,
                     files_added INTEGER DEFAULT 0,
-                    files_removed INTEGER DEFAULT 0,
-                    INDEX(directory_path),
-                    INDEX(started_at)
+                    files_removed INTEGER DEFAULT 0
                 )
             """)
 
@@ -115,6 +112,16 @@ class ScanTracker:
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_scan_history_last_scanned
                 ON scan_history(last_scanned)
+            """)
+
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_scan_sessions_directory
+                ON scan_sessions(directory_path)
+            """)
+
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_scan_sessions_started_at
+                ON scan_sessions(started_at)
             """)
 
             conn.commit()

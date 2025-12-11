@@ -15,6 +15,8 @@ from .cached_metadata import CachedMetadataHandler
 from .classifier import ContentClassifier
 from .async_mover import AsyncFileMover, AsyncDirectoryOrganizer
 from .incremental_scanner import IncrementalScanner
+from .parallel_metadata import ParallelMetadataExtractor, ExtractionResult
+from ..progress_tracker import IntelligentProgressTracker, ProgressStage
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +30,9 @@ class AsyncMusicOrganizer:
                  interactive: bool = False,
                  max_workers: int = 4,
                  use_cache: bool = True,
-                 cache_ttl: Optional[int] = None):
+                 cache_ttl: Optional[int] = None,
+                 enable_parallel_extraction: bool = True,
+                 use_processes: bool = False):
         """
         Initialize the async music organizer.
 
@@ -39,18 +43,37 @@ class AsyncMusicOrganizer:
             max_workers: Maximum number of worker threads (default: 4)
             use_cache: Whether to use metadata caching (default: True)
             cache_ttl: Cache TTL in days (default: 30)
+            enable_parallel_extraction: Enable parallel metadata extraction (default: True)
+            use_processes: Use process pool instead of thread pool (default: False)
         """
         self.config = config
         self.dry_run = dry_run
         self.interactive = interactive
         self.max_workers = max_workers
         self.use_cache = use_cache
+        self.enable_parallel_extraction = enable_parallel_extraction
+
+        # Initialize progress tracker first
+        self.progress_tracker = IntelligentProgressTracker()
 
         # Use cached metadata handler if enabled
         if self.use_cache:
             self.metadata_handler = CachedMetadataHandler(ttl=timedelta(days=cache_ttl or 30))
         else:
             self.metadata_handler = MetadataHandler()
+
+        # Initialize parallel metadata extractor if enabled
+        if self.enable_parallel_extraction:
+            self.parallel_extractor = ParallelMetadataExtractor(
+                max_workers=max_workers,
+                use_processes=use_processes,
+                memory_threshold=80.0,
+                batch_size=50,  # Smaller batches for better responsiveness
+                enable_memory_monitoring=True,
+                progress_tracker=self.progress_tracker
+            )
+        else:
+            self.parallel_extractor = None
 
         self.classifier = ContentClassifier()
         self.file_mover = AsyncFileMover(
@@ -440,6 +463,226 @@ class AsyncMusicOrganizer:
 
         return category_map.get(content_type, 'Unknown')
 
+    async def organize_incremental_parallel(
+        self,
+        directory: Path,
+        force_full: bool = False,
+        progress_callback: Optional[callable] = None
+    ) -> Dict[str, Any]:
+        """Organize files using incremental scanning and parallel metadata extraction.
+
+        Args:
+            directory: Directory to organize
+            force_full: Force full scan instead of incremental
+            progress_callback: Optional callback for progress updates
+
+        Returns:
+            Organization results with extraction statistics
+        """
+        if not self.enable_parallel_extraction:
+            # Fallback to non-parallel method
+            logger.warning("Parallel extraction disabled, falling back to sequential processing")
+            return await self._organize_incremental_sequential(directory, force_full, progress_callback)
+
+        logger.info(f"Starting parallel incremental organization of {directory}")
+
+        # Start file mover session
+        if not self.dry_run:
+            await self.file_mover.start_operation(directory)
+
+        results = {
+            'processed': 0,
+            'moved': 0,
+            'skipped': 0,
+            'by_category': {
+                'Albums': 0,
+                'Live': 0,
+                'Collaborations': 0,
+                'Compilations': 0,
+                'Rarities': 0,
+                'Unknown': 0
+            },
+            'errors': [],
+            'extraction_stats': {},
+            'scan_info': {}
+        }
+
+        try:
+            # Get scan info before starting
+            results['scan_info'] = self.get_scan_info(directory)
+
+            # Create target directory structure
+            if not self.dry_run:
+                await AsyncDirectoryOrganizer.create_directory_structure(
+                    self.config.target_directory
+                )
+
+            # Get modified files from incremental scanner
+            modified_files = []
+            async for file_path, is_modified in self.incremental_scanner.scan_directory_incremental(
+                directory, force_full=force_full
+            ):
+                if is_modified:
+                    modified_files.append(file_path)
+
+            if not modified_files:
+                logger.info("No modified files found")
+                return results
+
+            logger.info(f"Found {len(modified_files)} modified files to process")
+
+            # Extract metadata in parallel
+            extraction_results = await self.parallel_extractor.extract_batch(
+                modified_files,
+                progress_callback=progress_callback
+            )
+
+            # Update results with extraction statistics
+            extraction_stats = self.parallel_extractor.get_stats()
+            results['extraction_stats'] = {
+                'files_processed': extraction_stats.files_processed,
+                'files_succeeded': extraction_stats.files_succeeded,
+                'files_failed': extraction_stats.files_failed,
+                'processing_time': extraction_stats.processing_time,
+                'throughput_mbps': extraction_stats.throughput_mbps,
+                'worker_count': extraction_stats.worker_count,
+                'memory_peak_mb': extraction_stats.memory_peak_mb,
+                'avg_time_per_file': extraction_stats.avg_time_per_file
+            }
+
+            # Process extraction results
+            successful_extractions = []
+            for extraction_result in extraction_results:
+                if extraction_result.error:
+                    error_msg = f"Failed to extract metadata from {extraction_result.job.file_path}: {extraction_result.error}"
+                    results['errors'].append(error_msg)
+                    results['skipped'] += 1
+                else:
+                    successful_extractions.append(extraction_result.audio_file)
+
+                results['processed'] += 1
+
+            # Classify and organize successfully extracted files
+            if successful_extractions:
+                # Process files in parallel batches
+                semaphore = asyncio.Semaphore(self.max_workers)
+
+                async def process_audio_file(audio_file: AudioFile):
+                    async with semaphore:
+                        return await self._process_extracted_file(audio_file)
+
+                tasks = [process_audio_file(audio_file) for audio_file in successful_extractions]
+                process_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                for result in process_results:
+                    if isinstance(result, Exception):
+                        error_msg = f"Failed to process file: {result}"
+                        results['errors'].append(error_msg)
+                        results['skipped'] += 1
+                    elif result:
+                        results['moved'] += 1
+                        # Update category count
+                        if hasattr(result, 'content_type'):
+                            category = self._get_category_name(result.content_type)
+                            results['by_category'][category] += 1
+                    else:
+                        results['skipped'] += 1
+
+            logger.info(f"Parallel incremental organization completed: "
+                       f"{results['moved']}/{results['processed']} files organized")
+
+        finally:
+            # Finish file mover session
+            if not self.dry_run:
+                await self.file_mover.finish_operation()
+
+        return results
+
+    async def _process_extracted_file(self, audio_file: AudioFile) -> Optional[AudioFile]:
+        """Process an already extracted audio file.
+
+        Args:
+            audio_file: Audio file with metadata already extracted
+
+        Returns:
+            Processed audio file or None if skipped
+        """
+        # Classify content
+        def _classify():
+            return self.classifier.classify(audio_file)
+
+        content_type, confidence = await asyncio.get_event_loop().run_in_executor(
+            None, _classify
+        )
+
+        # Interactive mode for ambiguous cases
+        if self.interactive and self.classifier.is_ambiguous(audio_file):
+            content_type = await self._get_user_classification(audio_file, content_type, confidence)
+
+        audio_file.content_type = content_type
+
+        if self.dry_run:
+            # Just show what would happen
+            target_path = audio_file.get_target_path(self.config.target_directory)
+            logger.info(f"[DRY RUN] Would move: {audio_file.file_path} -> {target_path}")
+            return audio_file
+
+        # Get target path
+        target_path = audio_file.get_target_path(self.config.target_directory)
+
+        # Move file
+        await self.file_mover.move_file(audio_file.file_path, target_path)
+
+        return audio_file
+
+    async def _organize_incremental_sequential(
+        self,
+        directory: Path,
+        force_full: bool = False,
+        progress_callback: Optional[callable] = None
+    ) -> Dict[str, Any]:
+        """Sequential fallback for incremental organization."""
+        # Get modified files
+        modified_files = []
+        async for file_path in self.scan_directory_incremental(directory, force_full):
+            modified_files.append(file_path)
+
+        # Process using existing organize_files method
+        return await self.organize_files(modified_files, progress_callback)
+
+    async def get_extraction_stats(self) -> Optional[Dict[str, Any]]:
+        """Get parallel extraction statistics.
+
+        Returns:
+            Extraction statistics or None if parallel extraction is disabled
+        """
+        if self.parallel_extractor:
+            stats = self.parallel_extractor.get_stats()
+            return {
+                'files_processed': stats.files_processed,
+                'files_succeeded': stats.files_succeeded,
+                'files_failed': stats.files_failed,
+                'processing_time': stats.processing_time,
+                'throughput_mbps': stats.throughput_mbps,
+                'worker_count': stats.worker_count,
+                'memory_peak_mb': stats.memory_peak_mb,
+                'avg_time_per_file': stats.avg_time_per_file
+            }
+        return None
+
+    def get_progress_tracker(self) -> IntelligentProgressTracker:
+        """Get the progress tracker instance.
+
+        Returns:
+            The progress tracker used by this organizer
+        """
+        return self.progress_tracker
+
+    async def cleanup(self):
+        """Clean up resources including parallel extractor."""
+        if self.parallel_extractor:
+            await self.parallel_extractor.cleanup()
+
     async def rollback(self) -> None:
         """Rollback all changes made in the current session."""
         await self.file_mover.rollback()
@@ -452,6 +695,12 @@ class AsyncMusicOrganizer:
         if self.use_cache:
             cache_stats = self.metadata_handler.get_cache_stats()
             summary['cache'] = cache_stats
+
+        # Add extraction stats if parallel extraction is enabled
+        if self.enable_parallel_extraction:
+            extraction_stats = await self.get_extraction_stats()
+            if extraction_stats:
+                summary['extraction'] = extraction_stats
 
         return summary
 
@@ -477,6 +726,7 @@ class AsyncMusicOrganizer:
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.file_mover.__aexit__(exc_type, exc_val, exc_tb)
+        await self.cleanup()
 
 
 # Utility function for running async operations from sync code

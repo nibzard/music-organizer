@@ -115,6 +115,9 @@ class AsyncMusicCLI:
                       interactive: bool = False,
                       backup: bool = True,
                       max_workers: int = 4,
+                      use_processes: bool = False,
+                      enable_parallel_extraction: bool = True,
+                      memory_threshold: float = 80.0,
                       use_cache: bool = True,
                       cache_ttl: Optional[int] = None,
                       incremental: bool = False,
@@ -145,6 +148,8 @@ class AsyncMusicCLI:
                 dry_run=dry_run,
                 interactive=interactive,
                 max_workers=max_workers,
+                enable_parallel_extraction=enable_parallel_extraction,
+                use_processes=use_processes,
                 use_cache=use_cache,
                 cache_ttl=cache_ttl
             ) as organizer:
@@ -154,6 +159,12 @@ class AsyncMusicCLI:
                 self.console.print(f"Target: {target}")
                 self.console.print(f"Mode: {'DRY RUN' if dry_run else 'LIVE'}")
                 self.console.print(f"Workers: {max_workers}")
+                if enable_parallel_extraction:
+                    pool_type = "Process Pool" if use_processes else "Thread Pool"
+                    self.console.print(f"Parallel: ENABLED ({pool_type})")
+                    self.console.print(f"Memory Threshold: {memory_threshold}%")
+                else:
+                    self.console.print("Parallel: DISABLED")
                 self.console.print(f"Cache: {'ENABLED' if use_cache else 'DISABLED'}")
                 if use_cache:
                     ttl_str = f"{cache_ttl} days" if cache_ttl else "30 days (default)"
@@ -225,43 +236,63 @@ class AsyncMusicCLI:
 
                 # Switch to processing stage
                 progress_tracker.finish_stage(ProgressStage.SCANNING)
-                progress_tracker.start_stage(ProgressStage.METADATA_EXTRACTION, total=file_count)
 
-                # Choose the appropriate scanner
-                if incremental and not force_full_scan:
-                    file_scanner = organizer.scan_directory_incremental(
-                        source, force_full=False, filter_modified=True
+                # Use parallel organization if enabled and available
+                if enable_parallel_extraction and incremental and not force_full_scan:
+                    # Use the new parallel incremental organization
+                    progress_tracker.start_stage(ProgressStage.PARALLEL_EXTRACTION, total=file_count)
+
+                    results = await organizer.organize_incremental_parallel(
+                        source,
+                        force_full=False,
+                        progress_callback=lambda progress, completed: progress_tracker.set_completed(
+                            completed,
+                            error=False
+                        )
                     )
+
+                    progress_tracker.finish_stage(ProgressStage.PARALLEL_EXTRACTION)
                 else:
-                    file_scanner = organizer.scan_directory(source)
+                    # Use the original streaming approach
+                    progress_tracker.start_stage(ProgressStage.METADATA_EXTRACTION, total=file_count)
 
-                async for file_path, success, error in organizer.organize_files_streaming(
-                    file_scanner,
-                    batch_size=50
-                ):
-                    results['processed'] += 1
-
-                    # Update progress with file size
-                    try:
-                        file_size = file_path.stat().st_size
-                    except:
-                        file_size = 0
-
-                    progress_tracker.set_completed(
-                        results['processed'],
-                        bytes_processed=file_size,
-                        error=error is not None
-                    )
-
-                    if success:
-                        results['moved'] += 1
+                    # Choose the appropriate scanner
+                    if incremental and not force_full_scan:
+                        file_scanner = organizer.scan_directory_incremental(
+                            source, force_full=False, filter_modified=True
+                        )
                     else:
-                        results['skipped'] += 1
-                        if error:
-                            results['errors'].append(f"{file_path.name}: {error}")
+                        file_scanner = organizer.scan_directory(source)
 
-                # Finish progress tracking
-                progress_tracker.finish_stage(ProgressStage.METADATA_EXTRACTION)
+                    async for file_path, success, error in organizer.organize_files_streaming(
+                        file_scanner,
+                        batch_size=50
+                    ):
+                        results['processed'] += 1
+
+                        # Update progress with file size
+                        try:
+                            file_size = file_path.stat().st_size
+                        except:
+                            file_size = 0
+
+                        progress_tracker.set_completed(
+                            results['processed'],
+                            bytes_processed=file_size,
+                            error=error is not None
+                        )
+
+                        if success:
+                            results['moved'] += 1
+                        else:
+                            results['skipped'] += 1
+                            if error:
+                                results['errors'].append(f"{file_path.name}: {error}")
+
+                    # Finish progress tracking
+                    progress_tracker.finish_stage(ProgressStage.METADATA_EXTRACTION)
+
+                # Clear progress renderer
                 progress_renderer.clear()
 
                 # Show results
@@ -307,6 +338,26 @@ class AsyncMusicCLI:
                     self.console.print(f"  Valid entries: {cache_stats.get('valid_entries', 0)}")
                     self.console.print(f"  Expired entries: {cache_stats.get('expired_entries', 0)}")
                     self.console.print(f"  Cache size: {cache_stats.get('size_mb', 0):.2f} MB")
+
+                # Show parallel extraction statistics
+                if 'extraction_stats' in results:
+                    extraction_stats = results['extraction_stats']
+                    self.console.print("\n⚡ Parallel Extraction Statistics:")
+                    self.console.print(f"  Workers used: {extraction_stats.get('worker_count', 0)}")
+                    self.console.print(f"  Files processed: {extraction_stats.get('files_processed', 0)}")
+                    self.console.print(f"  Files succeeded: {extraction_stats.get('files_succeeded', 0)}")
+                    self.console.print(f"  Files failed: {extraction_stats.get('files_failed', 0)}")
+                    self.console.print(f"  Processing time: {extraction_stats.get('processing_time', 0):.2f}s")
+                    self.console.print(f"  Throughput: {extraction_stats.get('throughput_mbps', 0):.2f} MB/s")
+                    self.console.print(f"  Avg time per file: {extraction_stats.get('avg_time_per_file', 0):.3f}s")
+                    self.console.print(f"  Peak memory: {extraction_stats.get('memory_peak_mb', 0):.1f} MB")
+                elif 'extraction' in summary:
+                    # Show stats from operation summary
+                    extraction_stats = summary['extraction']
+                    self.console.print("\n⚡ Parallel Extraction Statistics:")
+                    self.console.print(f"  Workers: {extraction_stats.get('workers', 0)}")
+                    self.console.print(f"  Memory peak: {extraction_stats.get('memory_peak_mb', 0):.1f} MB")
+                    self.console.print(f"  Worker efficiency: {extraction_stats.get('worker_efficiency', 0):.2f}")
 
                 return 0
 
@@ -513,6 +564,9 @@ def create_async_cli():
     org_parser.add_argument('--interactive', action='store_true', help='Prompt for ambiguous categorizations')
     org_parser.add_argument('--no-backup', action='store_true', help='Disable backup creation')
     org_parser.add_argument('--workers', type=int, default=4, help='Number of worker threads (default: 4)')
+    org_parser.add_argument('--processes', action='store_true', help='Use process pool instead of thread pool for parallel processing')
+    org_parser.add_argument('--no-parallel', action='store_true', help='Disable parallel metadata extraction')
+    org_parser.add_argument('--memory-threshold', type=float, default=80.0, help='Memory usage threshold percentage for dynamic worker adjustment (default: 80)')
     org_parser.add_argument('--cache', action='store_true', default=True, help='Enable metadata caching (default: enabled)')
     org_parser.add_argument('--no-cache', action='store_true', help='Disable metadata caching')
     org_parser.add_argument('--cache-ttl', type=int, help='Cache TTL in days (default: 30)')
@@ -564,6 +618,9 @@ def create_async_cli():
             interactive=args.interactive,
             backup=not args.no_backup,
             max_workers=args.workers,
+            use_processes=args.processes,
+            enable_parallel_extraction=not args.no_parallel,
+            memory_threshold=args.memory_threshold,
             use_cache=not args.no_cache,
             cache_ttl=args.cache_ttl,
             incremental=args.incremental,

@@ -14,6 +14,7 @@ class ProgressStage(Enum):
     """Processing stages for detailed progress tracking."""
     SCANNING = "scanning"
     METADATA_EXTRACTION = "metadata_extraction"
+    PARALLEL_EXTRACTION = "parallel_extraction"
     CLASSIFICATION = "classification"
     MOVING = "moving"
     CLEANUP = "cleanup"
@@ -65,6 +66,13 @@ class ProgressMetrics:
     # Stage-specific progress
     stages: Dict[ProgressStage, StageProgress] = field(default_factory=dict)
     current_stage: Optional[ProgressStage] = None
+
+    # Parallel processing metrics
+    parallel_workers: int = 0
+    memory_usage_mb: float = 0.0
+    memory_peak_mb: float = 0.0
+    cpu_usage_percent: float = 0.0
+    worker_efficiency: float = 1.0  # Files per worker per second
 
     @property
     def elapsed(self) -> float:
@@ -156,6 +164,50 @@ class ProgressMetrics:
     def set_total(self, total: int):
         """Set the total number of files to process."""
         self.files_total = total
+
+    def update_parallel_metrics(self,
+                              workers: int = None,
+                              memory_mb: float = None,
+                              cpu_percent: float = None,
+                              memory_peak_mb: float = None):
+        """Update parallel processing metrics.
+
+        Args:
+            workers: Current number of active workers
+            memory_mb: Current memory usage in MB
+            cpu_percent: CPU usage percentage
+            memory_peak_mb: Peak memory usage in MB
+        """
+        if workers is not None:
+            self.parallel_workers = workers
+            # Calculate worker efficiency
+            if self.parallel_workers > 0 and self.elapsed > 0:
+                self.worker_efficiency = self.files_processed / (self.parallel_workers * self.elapsed)
+
+        if memory_mb is not None:
+            self.memory_usage_mb = memory_mb
+
+        if cpu_percent is not None:
+            self.cpu_usage_percent = cpu_percent
+
+        if memory_peak_mb is not None:
+            self.memory_peak_mb = max(self.memory_peak_mb, memory_peak_mb)
+
+    def get_parallel_summary(self) -> Dict[str, Any]:
+        """Get a summary of parallel processing metrics.
+
+        Returns:
+            Dictionary with parallel processing metrics
+        """
+        return {
+            'workers': self.parallel_workers,
+            'memory_current_mb': self.memory_usage_mb,
+            'memory_peak_mb': self.memory_peak_mb,
+            'cpu_usage_percent': self.cpu_usage_percent,
+            'worker_efficiency': self.worker_efficiency,
+            'throughput_per_worker': self.overall_rate / max(1, self.parallel_workers),
+            'is_parallel_processing': self.parallel_workers > 1
+        }
 
 
 class IntelligentProgressTracker:
@@ -276,3 +328,42 @@ class IntelligentProgressTracker:
                 return f"{bytes_count:.1f} {unit}"
             bytes_count /= 1024.0
         return f"{bytes_count:.1f} PB"
+
+    def update_parallel_metrics(self,
+                              workers: int = None,
+                              memory_mb: float = None,
+                              cpu_percent: float = None,
+                              memory_peak_mb: float = None):
+        """Update parallel processing metrics.
+
+        Args:
+            workers: Current number of active workers
+            memory_mb: Current memory usage in MB
+            cpu_percent: CPU usage percentage
+            memory_peak_mb: Peak memory usage in MB
+        """
+        self.metrics.update_parallel_metrics(
+            workers=workers,
+            memory_mb=memory_mb,
+            cpu_percent=cpu_percent,
+            memory_peak_mb=memory_peak_mb
+        )
+        self._try_render()
+
+    def get_parallel_summary(self) -> Dict[str, Any]:
+        """Get a summary of parallel processing metrics.
+
+        Returns:
+            Dictionary with parallel processing metrics
+        """
+        return self.metrics.get_parallel_summary()
+
+    def get_full_summary(self) -> Dict[str, Any]:
+        """Get a comprehensive summary including parallel metrics.
+
+        Returns:
+            Dictionary with all processing metrics
+        """
+        summary = self.get_summary()
+        summary['parallel'] = self.get_parallel_summary()
+        return summary

@@ -3,9 +3,10 @@ name = "music-organizer"
 version = "0.1.0"
 description = "Organize music library with metadata-aware categorization"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
     "mutagen>=1.47.0",
+    "psutil>=5.9.0",
 ]
 
 [dependency-groups]
