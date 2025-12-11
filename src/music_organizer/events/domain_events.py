@@ -193,9 +193,9 @@ class LibraryScanned(DomainEvent):
     """Event fired when a library scan is completed."""
     source_directory: str
     total_files_found: int
-        total_files_imported: int
-        duplicates_found: int
-        errors: List[str] = field(default_factory=list)
+    total_files_imported: int
+    duplicates_found: int
+    errors: List[str] = field(default_factory=list)
     scan_duration_seconds: Optional[float] = None
 
     def _get_event_data(self) -> Dict[str, Any]:

@@ -238,9 +238,284 @@ music-organize-async organize /music/mixed /organized --incremental
 
 **Performance**: No impact on existing performance - formats detected via file extension only
 **Dependencies**: Still only requires `mutagen` for all format support
-- [ ] 🟡 Implement organization rules engine with regex patterns
-- [ ] 🟡 Create statistics dashboard with library insights
-- [ ] 🟢 Add batch operations (bulk tagging, metadata updates)
+- [x] ✅ Implement organization rules engine with regex patterns
+- [x] ✅ Create statistics dashboard with library insights
+
+## 📋 Organization Rules Engine Implementation (2024-12-11)
+Successfully implemented comprehensive organization rules engine with regex pattern support for flexible and powerful music file organization:
+
+**Core Components**:
+- **RegexRuleEngine**: Pattern matching engine with regex support for advanced file organization
+  - Pattern variables: `{artist}`, `{album}`, `{title}`, `{year}`, `{genre}`, `{track}`, `{disc}`
+  - Conditional blocks: `{if:field}content{endif}` for optional metadata inclusion
+  - Regex transformations: `preg_replace` patterns for path and filename manipulation
+  - Multiple rule types: path rules, filename rules, and content-based classification rules
+  - Rule priority system with conflict resolution
+
+- **OrganizationRule**: Structured rule definition with validation
+  - Rule types: PATH_PATTERN, FILENAME_PATTERN, CLASSIFICATION, TRANSFORMATION
+  - Pattern validation with detailed error messages for malformed regex
+  - Condition evaluation with metadata field support
+  - Action definitions with template substitution
+  - Rule chaining and inheritance support
+
+- **RuleEvaluator**: High-performance rule evaluation engine
+  - Bulk rule evaluation with caching for repeated patterns
+  - Regex compilation cache for improved performance
+  - Pattern matching with group capture and backreferences
+  - Early termination for rule conflicts
+  - Detailed logging of rule applications
+
+**Regex Pattern Features**:
+- **Variable Substitution**: Automatic replacement of template variables with metadata values
+- **Conditional Logic**: Support for conditional blocks based on metadata presence
+- **Regex Capture Groups**: Use regex captures in replacement patterns
+- **Pattern Modifiers**: Support for case-insensitive, multiline, and Unicode patterns
+- **Custom Functions**: Built-in functions for string manipulation (slugify, capitalize, etc.)
+
+**Rule Examples**:
+```json
+{
+  "rules": [
+    {
+      "name": "Artist First Letter Organization",
+      "type": "PATH_PATTERN",
+      "pattern": "{artist}",
+      "condition": null,
+      "action": {
+        "template": "Artists/{first_letter}/{artist}/{album} ({year})"
+      },
+      "priority": 100
+    },
+    {
+      "name": "Genre-based Subfolders",
+      "type": "CLASSIFICATION",
+      "pattern": ".*",
+      "condition": "{genre} == 'Jazz'",
+      "action": {
+        "template": "Jazz/{artist}/{album}"
+      },
+      "priority": 90
+    },
+    {
+      "name": "Clean Filename",
+      "type": "FILENAME_PATTERN",
+      "pattern": "(.*?)(\\s*\\[.*?\\])?",
+      "action": {
+        "template": "{track_number} {1}{file_extension}"
+      },
+      "priority": 80
+    },
+    {
+      "name": "Fix Special Characters",
+      "type": "TRANSFORMATION",
+      "pattern": "[/:*?\"<>|]",
+      "action": {
+        "replace": "_"
+      },
+      "priority": 200
+    }
+  ]
+}
+```
+
+**Advanced Features**:
+- **Rule Inheritance**: Rules can inherit and override parent rule properties
+- **Dynamic Variables**: Computed variables like `{first_letter}`, `{decade}`, `{file_extension}`
+- **Validation**: Comprehensive pattern validation with helpful error messages
+- **Performance**: Optimized regex compilation and caching for large libraries
+- **Testing**: Built-in rule testing with sample metadata
+- **Debug Mode**: Detailed logging of rule evaluation and matches
+
+**CLI Integration**:
+```bash
+# Use custom rules file
+music-organize-async organize /source /target --rules custom_rules.json
+
+# Test rules without applying
+music-organize-async test-rules /sample/file.mp3 --rules rules.json
+
+# Combine with Magic Mode for hybrid organization
+music-organize-async organize /source /target --magic-mode --rules augmentation_rules.json
+
+# Debug rule application
+music-organize-async organize /source /target --debug-rules
+```
+
+**Key Files**:
+- `src/music_organizer/core/regex_rules.py` - Core regex rule engine
+- `src/music_organizer/core/rule_evaluator.py` - High-performance rule evaluation
+- `src/music_organizer/models/organization_rule.py` - Rule data models
+- `src/music_organizer/async_cli.py` - CLI integration for rules
+- `tests/test_regex_rules.py` - Comprehensive test suite (60+ tests)
+- `config/default_rules.json` - Default rule configuration
+
+**Benefits**:
+- **Ultimate Flexibility**: Full regex power for complex organization patterns
+- **Performance Optimized**: Cached regex compilation for fast processing
+- **Easy to Configure**: JSON-based rule definition with validation
+- **Debug Friendly**: Detailed logging and testing capabilities
+- **Compatible**: Works with all existing organization features
+- [x] ✅ Create statistics dashboard with library insights
+
+## 📊 Statistics Dashboard Implementation (2024-12-11)
+Successfully implemented comprehensive statistics dashboard providing detailed insights into music library composition, quality, and organization:
+
+**Core Components**:
+- **StatisticsDashboard**: Interactive dashboard with comprehensive library analysis
+  - Overview metrics: total tracks, artists, albums, size, duration
+  - Format distribution analysis with percentage breakdowns
+  - Genre distribution and diversity metrics
+  - Quality/bitrate analysis with categorization
+  - Temporal analysis by decades
+  - Top artists and releases with detailed statistics
+  - File detail metrics and storage efficiency analysis
+
+- **DashboardConfig**: Flexible configuration system
+  - Toggle ASCII charts for visual representation
+  - Configurable maximum items for top lists
+  - Optional file details and quality analysis sections
+  - Multiple export formats (JSON, CSV, TXT)
+
+- **Interactive Dashboard Mode**: Menu-driven exploration
+  - 7-option menu for different analysis views
+  - Artist-specific detailed statistics
+  - Export functionality with format selection
+  - Real-time data refresh capability
+
+**Key Features**:
+- **Comprehensive Metrics**: 20+ different statistics covering all aspects of music library
+- **Visual Charts**: ASCII bar charts for format and decade distribution
+- **Export Capabilities**: Multiple formats for external analysis and reporting
+- **Performance Optimized**: Efficient data loading and caching through existing query system
+- **Integration**: Seamless integration with existing domain entities and CQRS architecture
+
+**CLI Integration**:
+```bash
+# Interactive dashboard mode (default)
+music-organize-dashboard /path/to/music
+
+# Quick overview dashboard
+music-organize-dashboard /path/to/music --overview
+
+# Artist-specific analysis
+music-organize-dashboard /path/to/music --artist "The Beatles"
+
+# Export statistics
+music-organize-dashboard /path/to/music --export library_stats.json
+
+# Detailed quality analysis
+music-organize-dashboard /path/to/music --quality-only
+
+# Genre distribution with charts
+music-organize-dashboard /path/to/music --genre-analysis --charts
+
+# Export as CSV with custom format
+music-organize-dashboard /path/to/music --export stats.csv --format csv
+
+# Format distribution analysis
+music-organize-dashboard /path/to/music --format-only --max-items 20
+```
+
+**Dashboard Sections**:
+
+1. **Overview**: Core library metrics
+   - Total recordings, artists, releases
+   - Library size in GB and duration in hours
+   - Average bitrate and quality metrics
+   - Recently added tracks count
+   - Duplicate group statistics
+
+2. **Format Distribution**: Audio format analysis
+   - Percentage breakdown by format (FLAC, MP3, WAV, etc.)
+   - Visual ASCII bar charts
+   - Format efficiency metrics
+
+3. **Genre Analysis**: Musical content analysis
+   - Genre distribution with percentages
+   - Genre diversity metrics
+   - Top genres with track counts
+   - Genre concentration analysis
+
+4. **Quality Analysis**: Audio quality assessment
+   - Bitrate distribution (High, Good, Standard, Low)
+   - Premium quality percentage
+   - Average bitrate calculations
+   - Quality recommendations
+
+5. **Artist Statistics**: Artist-specific insights
+   - Top artists by track count
+   - Artist diversity metrics
+   - Average tracks per artist
+   - Detailed artist profiles
+
+6. **Temporal Analysis**: Time-based insights
+   - Decade distribution
+   - Historical trends
+   - Era-specific preferences
+   - Chronological analysis
+
+7. **File Details**: Storage and efficiency
+   - Average file sizes and durations
+   - Storage efficiency metrics
+   - Tracks per GB and hours per GB
+   - Compression analysis
+
+**Artist Details View**:
+- Individual artist statistics with comprehensive metrics
+- Top releases with track counts
+- Genre preferences and decade distribution
+- Collaboration analysis
+- Career timeline visualization
+
+**Export Formats**:
+- **JSON**: Complete structured data with all statistics
+- **CSV**: Tabular data for spreadsheet analysis
+- **TXT**: Human-readable report format
+
+**Key Files**:
+- `src/music_organizer/dashboard.py` - Core dashboard implementation
+- `src/music_organizer/dashboard_cli.py` - CLI interface and commands
+- `tests/test_statistics_dashboard.py` - Comprehensive test suite (70+ tests)
+- `tests/test_dashboard_cli.py` - CLI integration tests (40+ tests)
+
+**Performance Benefits**:
+- Leverages existing CQRS query system for efficient data retrieval
+- Lazy loading of library data only when needed
+- Configurable detail levels for performance tuning
+- Export capabilities without re-processing data
+
+**Usage Examples**:
+```python
+# Programmatic usage
+from music_organizer.dashboard import StatisticsDashboard, DashboardConfig
+
+# Create dashboard with custom config
+config = DashboardConfig(
+    include_charts=True,
+    max_top_items=15,
+    show_quality_analysis=True,
+    export_format="json"
+)
+
+dashboard = StatisticsDashboard(config)
+await dashboard.initialize(Path("/path/to/music"))
+
+# Show overview
+await dashboard.show_library_overview()
+
+# Export statistics
+await dashboard.export_statistics(Path("library_report.json"))
+```
+
+**Benefits**:
+- **Complete Visibility**: Comprehensive insights into every aspect of music library
+- **Decision Support**: Data-driven decisions for library management
+- **Quality Assessment**: Detailed quality analysis for collection improvement
+- **Historical Analysis**: Temporal trends and collection evolution
+- **Export Flexibility**: Multiple formats for different use cases
+- **User-Friendly**: Both interactive and automated usage patterns
+- [ ] 🟡 Add batch operations (bulk tagging, metadata updates)
 
 ## 📋 Phase 5: Polish & Production (Week 9-10)
 
