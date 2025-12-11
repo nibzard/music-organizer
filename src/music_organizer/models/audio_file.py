@@ -136,6 +136,14 @@ class AudioFile:
             file_type = 'WAV'
         elif extension in ['.m4a', '.mp4', '.aac']:
             file_type = 'MP4'
+        elif extension in ['.ogg']:
+            file_type = 'OGG'
+        elif extension in ['.opus']:
+            file_type = 'OPUS'
+        elif extension in ['.wma']:
+            file_type = 'WMA'
+        elif extension in ['.aiff', '.aif']:
+            file_type = 'AIFF'
         else:
             file_type = 'UNKNOWN'
 

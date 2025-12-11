@@ -11,6 +11,22 @@ from mutagen.mp4 import MP4
 from mutagen.wave import WAVE
 from mutagen.aiff import AIFF
 
+# Try to import optional format modules
+try:
+    from mutagen.oggvorbis import OggVorbis
+except ImportError:
+    OggVorbis = None
+
+try:
+    from mutagen.oggopus import OggOpus
+except ImportError:
+    OggOpus = None
+
+try:
+    from mutagen.wma import WMA
+except ImportError:
+    WMA = None
+
 from ..exceptions import MetadataError
 from ..models.audio_file import AudioFile
 
@@ -39,6 +55,12 @@ class MetadataHandler:
                 audio_file = MetadataHandler._extract_mp4_metadata(audio_file, mutagen_file)
             elif isinstance(mutagen_file, (WAVE, AIFF)):
                 audio_file = MetadataHandler._extract_wave_metadata(audio_file, mutagen_file)
+            elif OggVorbis and isinstance(mutagen_file, OggVorbis):
+                audio_file = MetadataHandler._extract_ogg_metadata(audio_file, mutagen_file)
+            elif OggOpus and isinstance(mutagen_file, OggOpus):
+                audio_file = MetadataHandler._extract_ogg_metadata(audio_file, mutagen_file)
+            elif WMA and isinstance(mutagen_file, WMA):
+                audio_file = MetadataHandler._extract_wma_metadata(audio_file, mutagen_file)
 
             # Post-process metadata
             audio_file = MetadataHandler._post_process_metadata(audio_file)
@@ -221,6 +243,111 @@ class MetadataHandler:
         return audio_file
 
     @staticmethod
+    def _extract_ogg_metadata(audio_file: AudioFile, ogg_file) -> AudioFile:
+        """Extract metadata from OGG Vorbis/Opus file."""
+        if not ogg_file.tags:
+            return audio_file
+
+        tags = ogg_file.tags
+
+        # OGG files use Vorbis comments similar to FLAC
+        # Basic fields
+        raw_artists = MetadataHandler._get_list_field(tags, ['ARTIST'])
+
+        # Split artists if comma-separated
+        audio_file.artists = []
+        for artist in raw_artists:
+            if ',' in artist:
+                # Split and clean up
+                split_artists = [a.strip() for a in artist.split(',') if a.strip()]
+                audio_file.artists.extend(split_artists)
+            else:
+                audio_file.artists.append(artist)
+
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_artists = []
+        for artist in audio_file.artists:
+            if artist not in seen:
+                seen.add(artist)
+                unique_artists.append(artist)
+        audio_file.artists = unique_artists
+
+        # Check for ALBUMARTIST first
+        albumartist = MetadataHandler._get_single_field(tags, ['ALBUMARTIST'])
+        if albumartist:
+            audio_file.primary_artist = albumartist
+        else:
+            if audio_file.artists:
+                audio_file.primary_artist = audio_file.artists[0]
+
+        audio_file.album = MetadataHandler._get_single_field(tags, ['ALBUM'])
+        audio_file.title = MetadataHandler._get_single_field(tags, ['TITLE'])
+        audio_file.genre = MetadataHandler._get_single_field(tags, ['GENRE'])
+
+        # Date fields
+        date = MetadataHandler._get_single_field(tags, ['DATE'])
+        if date:
+            # Try to extract year
+            year_match = re.match(r'(\d{4})', date)
+            if year_match:
+                audio_file.year = int(year_match.group(1))
+            audio_file.date = date
+
+        # Track number
+        tracknumber = MetadataHandler._get_single_field(tags, ['TRACKNUMBER'])
+        if tracknumber:
+            # Handle "total" format like "5/12"
+            track_match = re.match(r'(\d+)', tracknumber)
+            if track_match:
+                audio_file.track_number = int(track_match.group(1))
+
+        # Live recording specific fields
+        audio_file.location = MetadataHandler._get_single_field(tags, ['LOCATION', 'VENUE'])
+
+        # Store all tags for reference
+        audio_file.metadata = dict(tags)
+
+        return audio_file
+
+    @staticmethod
+    def _extract_wma_metadata(audio_file: AudioFile, wma_file) -> AudioFile:
+        """Extract metadata from WMA file."""
+        if not wma_file.tags:
+            return audio_file
+
+        tags = wma_file.tags
+
+        # WMA uses different tag names
+        # Basic fields
+        audio_file.artists = MetadataHandler._get_wma_field(tags, ['Author', 'Artist'])
+        audio_file.primary_artist = MetadataHandler._get_wma_field(tags, ['AlbumArtist']) or \
+                                   (audio_file.artists[0] if audio_file.artists else None)
+        audio_file.album = MetadataHandler._get_wma_field(tags, ['AlbumTitle', 'Album'])
+        audio_file.title = MetadataHandler._get_wma_field(tags, ['Title'])
+        audio_file.genre = MetadataHandler._get_wma_field(tags, ['Genre'])
+
+        # Date fields
+        year = MetadataHandler._get_wma_field(tags, ['Year', 'ReleaseDate'])
+        if year:
+            year_match = re.match(r'(\d{4})', str(year))
+            if year_match:
+                audio_file.year = int(year_match.group(1))
+
+        # Track number
+        track = MetadataHandler._get_wma_field(tags, ['TrackNumber'])
+        if track:
+            try:
+                audio_file.track_number = int(track)
+            except (ValueError, TypeError):
+                pass
+
+        # Store metadata
+        audio_file.metadata = dict(tags)
+
+        return audio_file
+
+    @staticmethod
     def _get_list_field(tags: Dict, keys: List[str]) -> List[str]:
         """Get a field that can have multiple values."""
         for key in keys:
@@ -255,6 +382,17 @@ class MetadataHandler:
     @staticmethod
     def _get_mp4_field(tags: Dict, keys: List[str]) -> List[str]:
         """Get field from MP4 tags."""
+        for key in keys:
+            if key in tags:
+                value = tags[key]
+                if isinstance(value, list):
+                    return [str(v) for v in value]
+                return [str(value)]
+        return []
+
+    @staticmethod
+    def _get_wma_field(tags: Dict, keys: List[str]) -> List[str]:
+        """Get field from WMA tags."""
         for key in keys:
             if key in tags:
                 value = tags[key]
