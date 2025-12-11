@@ -143,7 +143,7 @@ class EnhancedAsyncMusicOrganizer:
             history_tracker=self.history_tracker if self.enable_operation_history else None
         )
 
-    async def organize_files(self, source_dir: Path, target_dir: Path) -> Result[Dict]:
+    async def organize_files(self, source_dir: Path, target_dir: Path) -> Result[Dict, MusicOrganizerError]:
         """
         Organize files with comprehensive operation tracking.
 
@@ -320,7 +320,7 @@ class EnhancedAsyncMusicOrganizer:
                 await self.history_tracker.end_session(self.session_id, "failed")
             return Failure(f"Organization failed: {str(e)}")
 
-    async def get_operation_history(self) -> Result[List[Dict]]:
+    async def get_operation_history(self) -> Result[List[Dict], MusicOrganizerError]:
         """Get operation history for the current session."""
         if not self.enable_operation_history or not self.history_tracker:
             return Failure("Operation history is not enabled")
@@ -334,7 +334,7 @@ class EnhancedAsyncMusicOrganizer:
         except Exception as e:
             return Failure(f"Failed to get operation history: {str(e)}")
 
-    async def rollback_session(self, dry_run: bool = False) -> Result[Dict]:
+    async def rollback_session(self, dry_run: bool = False) -> Result[Dict, MusicOrganizerError]:
         """Rollback the current session."""
         if not self.enable_operation_history or not self.rollback_service:
             return Failure("Operation rollback is not enabled")
@@ -344,7 +344,7 @@ class EnhancedAsyncMusicOrganizer:
 
         return await self.rollback_service.rollback_session(self.session_id, dry_run)
 
-    async def list_recent_sessions(self, limit: int = 10) -> Result[List[Dict]]:
+    async def list_recent_sessions(self, limit: int = 10) -> Result[List[Dict], MusicOrganizerError]:
         """List recent operation sessions."""
         if not self.enable_operation_history or not self.history_tracker:
             return Failure("Operation history is not enabled")
@@ -356,7 +356,7 @@ class EnhancedAsyncMusicOrganizer:
             return Failure(f"Failed to list sessions: {str(e)}")
 
     async def organize_files_bulk(self, source_dir: Path, target_dir: Path,
-                                 bulk_config: Optional[BulkOperationConfig] = None) -> Result[Dict]:
+                                 bulk_config: Optional[BulkOperationConfig] = None) -> Result[Dict, MusicOrganizerError]:
         """
         Organize files using bulk operations with operation tracking.
 
@@ -411,7 +411,7 @@ class EnhancedAsyncMusicOrganizer:
 
         return await self.parallel_extractor.extract_metadata_batch(file_paths)
 
-    async def _extract_metadata_single(self, file_path: Path) -> Result[AudioFile]:
+    async def _extract_metadata_single(self, file_path: Path) -> Result[AudioFile, MusicOrganizerError]:
         """Extract metadata for a single file."""
         try:
             # Check cache first if enabled
@@ -445,7 +445,7 @@ class EnhancedAsyncMusicOrganizer:
             None, self.config.get_target_path, audio_file, target_dir
         )
 
-    async def _organize_single_file(self, audio_file: AudioFile, target_dir: Path) -> Result[Path]:
+    async def _organize_single_file(self, audio_file: AudioFile, target_dir: Path) -> Result[Path, MusicOrganizerError]:
         """Organize a single audio file."""
         try:
             # Get target path

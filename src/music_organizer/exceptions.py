@@ -24,3 +24,8 @@ class ClassificationError(MusicOrganizerError):
 class ConfigurationError(MusicOrganizerError):
     """Raised when there's an error in configuration."""
     pass
+
+
+class MagicModeError(MusicOrganizerError):
+    """Raised when Magic Mode operations fail."""
+    pass

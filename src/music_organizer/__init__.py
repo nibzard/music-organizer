@@ -31,12 +31,12 @@ from .core.interactive_duplicate_resolver import (
     InteractiveDuplicateResolver,
     DuplicateAction,
     ResolutionStrategy,
-    DuplicateQualityScorer,
-    quick_duplicate_resolution
+    DuplicateQualityScorer
 )
 
 from .core.duplicate_resolver_organizer import (
-    DuplicateResolverOrganizer
+    DuplicateResolverOrganizer,
+    quick_duplicate_resolution
 )
 
 from .ui.duplicate_resolver_ui import (
