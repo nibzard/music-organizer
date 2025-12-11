@@ -178,7 +178,66 @@ preview.export_preview(Path("organization_preview.json"))
 ```
 
 ### Additional Features
-- [ ] 🟡 Add support for additional audio formats (OGG, OPUS, WMA)
+- [x] ✅ Add support for additional audio formats (OGG, OPUS, WMA)
+
+## 📋 Audio Format Support Implementation (2024-12-11)
+Successfully added comprehensive support for additional audio formats, expanding the music organizer's compatibility:
+
+**Supported Formats Added**:
+- **OGG Vorbis**: Full metadata extraction with Vorbis comment parsing
+- **OPUS**: OGG container with Opus audio codec support
+- **WMA**: Windows Media Audio format with ASF tag support
+- **AIFF**: Audio Interchange File Format (both .aiff and .aif extensions)
+
+**Implementation Details**:
+
+**AudioFile Model Updates** (`src/music_organizer/models/audio_file.py`):
+- Enhanced `from_path()` method to recognize new file extensions
+- Added format detection for `.ogg`, `.opus`, `.wma`, `.aiff`, and `.aif`
+- Maintains backward compatibility with existing formats
+
+**Metadata Extraction** (`src/music_organizer/core/metadata.py`):
+- **OGG/OPUS Support**:
+  - Imports OggVorbis and OggOpus from mutagen with graceful fallback
+  - `_extract_ogg_metadata()` method handles Vorbis comments (similar to FLAC)
+  - Supports standard fields: ARTIST, ALBUM, TITLE, GENRE, DATE, TRACKNUMBER, LOCATION
+
+- **WMA Support**:
+  - Imports WMA module with graceful fallback if unavailable
+  - `_extract_wma_metadata()` method handles ASF tags
+  - Supports WMA-specific tag names: Author/Artist, AlbumTitle/Album, Title, Genre, Year, TrackNumber
+  - Robust parsing with type conversion for numeric fields
+
+- **Error Handling**: All format modules imported with try/except to handle missing mutagen modules gracefully
+- **Type Safety**: Proper type checking with `isinstance()` before calling format-specific extraction methods
+
+**Test Coverage** (`tests/test_new_audio_formats.py`):
+- Unit tests for format recognition in AudioFile.from_path()
+- Tests for metadata extraction methods with mock data
+- Validation of import error handling
+- Complete test suite with 5 test methods
+
+**Benefits**:
+- **Broader Compatibility**: Now handles virtually all common audio formats
+- **Robust Implementation**: Graceful degradation if format modules unavailable
+- **Consistent API**: New formats work seamlessly with existing organization features
+- **Future-Ready**: Easy to extend for additional formats as needed
+
+**Usage**:
+The new formats work automatically with all existing features:
+```bash
+# Organize OGG files
+music-organize-async organize /music/ogg /organized --workers 8
+
+# Organize OPUS files with Magic Mode
+music-organize-async organize /music/opus /organized --magic-mode
+
+# Mix of all supported formats
+music-organize-async organize /music/mixed /organized --incremental
+```
+
+**Performance**: No impact on existing performance - formats detected via file extension only
+**Dependencies**: Still only requires `mutagen` for all format support
 - [ ] 🟡 Implement organization rules engine with regex patterns
 - [ ] 🟡 Create statistics dashboard with library insights
 - [ ] 🟢 Add batch operations (bulk tagging, metadata updates)

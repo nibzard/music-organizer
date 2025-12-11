@@ -28,6 +28,7 @@ from .rollback_cli import (
     cmd_sessions,
     restore_from_backup
 )
+from .regex_rules_cli import setup_rules_parser, handle_rules_command
 from .console_utils import SimpleConsole
 
 
@@ -86,6 +87,9 @@ Examples:
 
     # Sessions command
     setup_sessions_parser(subparsers)
+
+    # Rules command
+    setup_rules_parser(subparsers)
 
     # Restore command
     restore_parser = subparsers.add_parser(
@@ -198,6 +202,10 @@ async def main():
         return
     elif args.command == 'sessions':
         await cmd_sessions(args)
+        return
+    elif args.command == 'rules':
+        exit_code = await handle_rules_command(args)
+        sys.exit(exit_code)
         return
     elif args.command == 'restore':
         await restore_from_backup(Path(args.backup_dir), Path(args.target_dir), args.dry_run)
