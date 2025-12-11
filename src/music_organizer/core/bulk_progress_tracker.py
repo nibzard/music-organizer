@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from collections import deque
 from enum import Enum
 
-from .progress_tracker import ProgressStage, IntelligentProgressTracker
+from ..progress_tracker import ProgressStage, IntelligentProgressTracker
 
 
 class BulkProgressStage(Enum):

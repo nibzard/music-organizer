@@ -9,6 +9,7 @@ A Python-based music library organizer that uses metadata-aware categorization t
 
 - 🤖 **Smart Classification**: Automatically categorizes music into Albums, Live Recordings, Collaborations, Compilations, and Rarities
 - 📊 **Metadata Enhancement**: Uses MusicBrainz lookup to enhance and complete missing metadata
+- 🔍 **Interactive Duplicate Resolution**: Side-by-side comparison with intelligent quality scoring for managing duplicates
 - 🔒 **Safe Operations**: Optional backup creation with rollback capability
 - 🎯 **Interactive Mode**: Prompts for ambiguous categorizations
 - 🎧 **Multiple Formats**: Support for FLAC, MP3, WAV, M4A, and AAC
@@ -144,6 +145,34 @@ Options:
 
 # Validate existing organization
 ./mo validate DIRECTORY
+```
+
+### Duplicate Resolution Commands
+
+```bash
+# Interactive duplicate resolution with side-by-side comparison
+music-organize-duplicates resolve /path/to/music/library
+
+# Preview duplicates without resolving them
+music-organize-duplicates preview /path/to/music/library
+
+# Automatically keep the best quality version
+music-organize-duplicates resolve /path/to/music/library --strategy auto_best
+
+# Move duplicates to a separate directory instead of deleting
+music-organize-duplicates resolve /path/to/music/library --move-duplicates-to /path/to/duplicates
+
+# Dry run to see what would happen
+music-organize-duplicates resolve /path/to/music/library --dry-run
+
+# Organize music with duplicate resolution
+music-organize-duplicates organize /source /target --strategy auto_smart
+
+# Resolution strategies:
+#   - interactive: Ask for each duplicate (default)
+#   - auto_best: Automatically keep best quality
+#   - auto_first: Always keep first file found
+#   - auto_smart: Make smart decisions based on metadata
 ```
 
 ### Configuration File

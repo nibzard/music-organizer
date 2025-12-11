@@ -18,7 +18,6 @@ from .incremental_scanner import IncrementalScanner
 from .parallel_metadata import ParallelMetadataExtractor, ExtractionResult
 from ..progress_tracker import IntelligentProgressTracker, ProgressStage
 from .bulk_operations import BulkMoveOperator, BulkOperationConfig, ConflictStrategy
-from .bulk_organizer import BulkAsyncOrganizer
 from .bulk_progress_tracker import BulkProgressTracker
 
 logger = logging.getLogger(__name__)
@@ -710,6 +709,7 @@ class AsyncMusicOrganizer:
             )
 
         # Create bulk organizer
+        from .bulk_organizer import BulkAsyncOrganizer
         bulk_organizer = BulkAsyncOrganizer(
             config=self.config,
             bulk_config=bulk_config,
@@ -746,6 +746,7 @@ class AsyncMusicOrganizer:
             conflict_strategy=ConflictStrategy.RENAME
         )
 
+        from .bulk_organizer import BulkAsyncOrganizer
         bulk_organizer = BulkAsyncOrganizer(
             config=self.config,
             bulk_config=bulk_config,

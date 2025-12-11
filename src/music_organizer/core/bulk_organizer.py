@@ -16,7 +16,7 @@ from ..domain.entities import Recording, Release, AudioLibrary
 from ..domain.value_objects import AudioPath, Metadata
 from .async_organizer import AsyncMusicOrganizer
 from .bulk_operations import BulkMoveOperator, BulkOperationConfig, ConflictStrategy
-from .parallel_extractor import ParallelMetadataExtractor
+from .parallel_metadata import ParallelMetadataExtractor
 from .incremental_scanner import IncrementalScanner
 
 

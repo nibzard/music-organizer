@@ -26,6 +26,23 @@ from .core.enhanced_async_organizer import (
     EnhancedAsyncMusicOrganizer
 )
 
+# Export duplicate resolution components
+from .core.interactive_duplicate_resolver import (
+    InteractiveDuplicateResolver,
+    DuplicateAction,
+    ResolutionStrategy,
+    DuplicateQualityScorer,
+    quick_duplicate_resolution
+)
+
+from .core.duplicate_resolver_organizer import (
+    DuplicateResolverOrganizer
+)
+
+from .ui.duplicate_resolver_ui import (
+    DuplicateResolverUI
+)
+
 __all__ = [
     # Core components
     "OperationHistoryTracker",
@@ -33,14 +50,23 @@ __all__ = [
     "EnhancedAsyncFileMover",
     "EnhancedAsyncMusicOrganizer",
 
+    # Duplicate resolution components
+    "InteractiveDuplicateResolver",
+    "DuplicateResolverOrganizer",
+    "DuplicateQualityScorer",
+    "DuplicateResolverUI",
+
     # Types and enums
     "OperationType",
     "OperationStatus",
     "OperationRecord",
     "OperationSession",
+    "DuplicateAction",
+    "ResolutionStrategy",
 
     # Utilities
     "operation_session",
     "create_operation_record",
-    "file_operation_session"
+    "file_operation_session",
+    "quick_duplicate_resolution"
 ]
