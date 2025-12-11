@@ -116,7 +116,9 @@ class AsyncMusicCLI:
                       backup: bool = True,
                       max_workers: int = 4,
                       use_cache: bool = True,
-                      cache_ttl: Optional[int] = None) -> int:
+                      cache_ttl: Optional[int] = None,
+                      incremental: bool = False,
+                      force_full_scan: bool = False) -> int:
         """Organize music files asynchronously."""
         try:
             # Load configuration
@@ -157,17 +159,44 @@ class AsyncMusicCLI:
                     ttl_str = f"{cache_ttl} days" if cache_ttl else "30 days (default)"
                     self.console.print(f"Cache TTL: {ttl_str}")
 
+                # Show scan mode
+                if incremental:
+                    if force_full_scan:
+                        self.console.print("Scan mode: Full (forced)", 'yellow')
+                    else:
+                        scan_info = organizer.get_scan_info(source)
+                        if scan_info and scan_info['has_history']:
+                            self.console.print(f"Scan mode: Incremental (last scan: {scan_info['last_scan'][:19]})", 'green')
+                        else:
+                            self.console.print("Scan mode: Full (no previous scan history)", 'yellow')
+                else:
+                    self.console.print("Scan mode: Full (standard scan)", 'yellow')
+
                 # Count total files first
                 self.console.print("\n🔍 Scanning files...")
                 file_count = 0
-                async for _ in organizer.scan_directory(source):
-                    file_count += 1
+
+                if incremental and not force_full_scan:
+                    # Use incremental scanning
+                    scan_info = organizer.get_scan_info(source)
+                    async for _ in organizer.scan_directory_incremental(
+                        source, force_full=False, filter_modified=True
+                    ):
+                        file_count += 1
+                else:
+                    # Use full scan
+                    async for _ in organizer.scan_directory(source):
+                        file_count += 1
 
                 if file_count == 0:
-                    self.console.print("No audio files found!", 'yellow')
+                    if incremental and not force_full_scan:
+                        self.console.print("No new or modified files found since last scan!", 'green')
+                    else:
+                        self.console.print("No audio files found!", 'yellow')
                     return 0
 
-                self.console.print(f"Found {file_count} audio files")
+                scan_type = "new/modified" if incremental and not force_full_scan else "audio"
+                self.console.print(f"Found {file_count} {scan_type} files")
 
                 # Initialize intelligent progress tracker
                 progress_tracker = IntelligentProgressTracker()
@@ -198,8 +227,16 @@ class AsyncMusicCLI:
                 progress_tracker.finish_stage(ProgressStage.SCANNING)
                 progress_tracker.start_stage(ProgressStage.METADATA_EXTRACTION, total=file_count)
 
+                # Choose the appropriate scanner
+                if incremental and not force_full_scan:
+                    file_scanner = organizer.scan_directory_incremental(
+                        source, force_full=False, filter_modified=True
+                    )
+                else:
+                    file_scanner = organizer.scan_directory(source)
+
                 async for file_path, success, error in organizer.organize_files_streaming(
-                    organizer.scan_directory(source),
+                    file_scanner,
                     batch_size=50
                 ):
                     results['processed'] += 1
@@ -479,6 +516,8 @@ def create_async_cli():
     org_parser.add_argument('--cache', action='store_true', default=True, help='Enable metadata caching (default: enabled)')
     org_parser.add_argument('--no-cache', action='store_true', help='Disable metadata caching')
     org_parser.add_argument('--cache-ttl', type=int, help='Cache TTL in days (default: 30)')
+    org_parser.add_argument('--incremental', action='store_true', help='Only process new or modified files (incremental scan)')
+    org_parser.add_argument('--force-full-scan', action='store_true', help='Force full scan instead of incremental')
     org_parser.add_argument('--debug', action='store_true', help='Enable debug output')
 
     # Scan command
@@ -526,7 +565,9 @@ def create_async_cli():
             backup=not args.no_backup,
             max_workers=args.workers,
             use_cache=not args.no_cache,
-            cache_ttl=args.cache_ttl
+            cache_ttl=args.cache_ttl,
+            incremental=args.incremental,
+            force_full_scan=args.force_full_scan
         ))
     elif args.command == 'scan':
         return asyncio.run(cli.scan(

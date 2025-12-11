@@ -14,6 +14,7 @@ from .metadata import MetadataHandler
 from .cached_metadata import CachedMetadataHandler
 from .classifier import ContentClassifier
 from .async_mover import AsyncFileMover, AsyncDirectoryOrganizer
+from .incremental_scanner import IncrementalScanner
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,9 @@ class AsyncMusicOrganizer:
         )
         self.user_decisions = {}  # Cache user decisions for similar cases
 
+        # Initialize incremental scanner
+        self.incremental_scanner = IncrementalScanner()
+
     async def scan_directory(self, directory: Path) -> AsyncGenerator[Path, None]:
         """Async scan directory for audio files using a generator."""
         if not directory.exists():
@@ -98,6 +102,69 @@ class AsyncMusicOrganizer:
 
         if batch:  # Yield the last batch if it's not empty
             yield batch
+
+    async def scan_directory_incremental(
+        self,
+        directory: Path,
+        force_full: bool = False,
+        filter_modified: bool = True
+    ) -> AsyncGenerator[Path, None]:
+        """Async scan directory incrementally, yielding only new or modified files.
+
+        Args:
+            directory: Directory to scan
+            force_full: Force full scan instead of incremental
+            filter_modified: If True, only yield modified/new files
+        """
+        async for file_path, is_modified in self.incremental_scanner.scan_directory_incremental(
+            directory, force_full=force_full
+        ):
+            if filter_modified:
+                if is_modified:
+                    yield file_path
+            else:
+                yield file_path
+
+    async def scan_directory_batch_incremental(
+        self,
+        directory: Path,
+        batch_size: int = 100,
+        force_full: bool = False,
+        filter_modified: bool = True
+    ) -> AsyncGenerator[List[Path], None]:
+        """Async scan directory incrementally, yielding batches of new/modified files.
+
+        Args:
+            directory: Directory to scan
+            batch_size: Number of files per batch
+            force_full: Force full scan instead of incremental
+            filter_modified: If True, only yield modified/new files
+        """
+        async for batch in self.incremental_scanner.scan_directory_batch_incremental(
+            directory, batch_size=batch_size, force_full=force_full,
+            filter_modified=filter_modified
+        ):
+            # Extract just the file paths from the (path, is_modified) tuples
+            yield [file_path for file_path, _ in batch]
+
+    def get_scan_info(self, directory: Path) -> dict:
+        """Get information about the last scan of a directory.
+
+        Args:
+            directory: Directory to check
+
+        Returns:
+            Dictionary with scan information
+        """
+        return self.incremental_scanner.get_scan_info(directory)
+
+    def force_full_scan_next(self, directory: Path) -> None:
+        """Clear scan history to force full scan next time.
+
+        Args:
+            directory: Directory to clear history for
+        """
+        self.incremental_scanner.force_full_scan_next(directory)
 
     async def organize_files(self, files: List[Path], progress=None, task_id=None) -> Dict[str, Any]:
         """Organize a list of audio files asynchronously."""

@@ -2,10 +2,12 @@
 
 import sys
 import argparse
+import asyncio
 from pathlib import Path
 from typing import Optional
 
 from .core.organizer import MusicOrganizer
+from .core.async_organizer import AsyncMusicOrganizer
 from .core.metadata import MetadataHandler
 from .core.classifier import ContentClassifier
 from .core.mover import FileMover, DirectoryOrganizer
@@ -17,8 +19,8 @@ from .console_utils import SimpleConsole, SimpleProgress, format_size
 console = SimpleConsole()
 
 
-def organize_command(args):
-    """Handle the organize command."""
+async def organize_command_async(args):
+    """Handle the organize command with async support for incremental scanning."""
     try:
         # Load configuration
         if args.config:
@@ -30,6 +32,19 @@ def organize_command(args):
                 file_operations=type('FileOps', (), {'backup': args.backup})()
             )
 
+        # Initialize async organizer
+        organizer = AsyncMusicOrganizer(
+            cfg,
+            dry_run=args.dry_run,
+            interactive=args.interactive,
+            max_workers=args.workers
+        )
+
+        # Get scan info if incremental
+        scan_info = None
+        if args.incremental and not args.force_full_scan:
+            scan_info = organizer.get_scan_info(args.source)
+
         # Show plan
         console.print("\n🎵 Music Organization Plan", 'bold')
         console.print(f"Source: {args.source}")
@@ -39,27 +54,61 @@ def organize_command(args):
         console.print(f"Interactive: {'Enabled' if args.interactive else 'Disabled'}")
         console.print(f"Dry run: {'Yes' if args.dry_run else 'No'}")
 
+        # Show scan mode
+        if args.incremental:
+            if args.force_full_scan:
+                console.print("Scan mode: Full (forced)", 'yellow')
+            elif scan_info and scan_info['has_history']:
+                console.print(f"Scan mode: Incremental (last scan: {scan_info['last_scan'][:19]})", 'green')
+            else:
+                console.print("Scan mode: Full (no previous scan history)", 'yellow')
+        else:
+            console.print("Scan mode: Full (standard scan)", 'yellow')
+
+        console.print(f"Workers: {args.workers}")
+
         if not args.dry_run:
             if not console.confirm("\nProceed with organization?", default=True):
                 console.print("Cancelled", 'yellow')
                 return 0
 
-        # Initialize organizer
-        organizer = MusicOrganizer(cfg, dry_run=args.dry_run, interactive=args.interactive)
-
         # Scan files
         console.print("\n🔍 Scanning music files...")
-        files = organizer.scan_directory(args.source)
+
+        if args.incremental:
+            # Use incremental scanning
+            if args.force_full_scan:
+                # Force full scan
+                files = []
+                async for file_path in organizer.scan_directory_incremental(
+                    args.source, force_full=True
+                ):
+                    files.append(file_path)
+            else:
+                # Incremental scan (only modified files)
+                files = []
+                async for file_path in organizer.scan_directory_incremental(
+                    args.source, force_full=False
+                ):
+                    files.append(file_path)
+        else:
+            # Use standard full scan
+            files = []
+            async for file_path in organizer.scan_directory(args.source):
+                files.append(file_path)
 
         if not files:
-            console.print("No audio files found!", 'yellow')
+            if args.incremental and not args.force_full_scan and scan_info and scan_info['has_history']:
+                console.print("No new or modified files found since last scan!", 'green')
+            else:
+                console.print("No audio files found!", 'yellow')
             return 0
 
-        console.print(f"\nFound {len(files)} audio files", 'green')
+        scan_type = "new/modified" if args.incremental and not args.force_full_scan else "audio"
+        console.print(f"\nFound {len(files)} {scan_type} files", 'green')
 
         # Process files with progress
-        progress = SimpleProgress(len(files), "Processing files")
-        results = _organize_with_progress(organizer, files, progress)
+        results = await organizer.organize_files(files)
 
         # Show results
         console.rule("📊 Results")
@@ -99,6 +148,11 @@ def organize_command(args):
             import traceback
             console.print(traceback.format_exc())
         return 1
+
+
+def organize_command(args):
+    """Wrapper to run the async organize command."""
+    return asyncio.run(organize_command_async(args))
 
 
 def scan_command(args):
@@ -434,6 +488,9 @@ def main():
     org_parser.add_argument('--interactive', action='store_true', help='Prompt for ambiguous categorizations')
     org_parser.add_argument('--backup/--no-backup', default=True, help='Create backup before reorganization (default: enabled)')
     org_parser.add_argument('--verbose', action='store_true', help='Verbose output')
+    org_parser.add_argument('--incremental', action='store_true', help='Only process new or modified files (incremental scan)')
+    org_parser.add_argument('--force-full-scan', action='store_true', help='Force full scan instead of incremental')
+    org_parser.add_argument('--workers', type=int, default=4, help='Number of worker threads for parallel processing (default: 4)')
 
     # Scan command
     scan_parser = subparsers.add_parser('scan', help='Analyze music library')
