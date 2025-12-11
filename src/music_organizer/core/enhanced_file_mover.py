@@ -50,7 +50,7 @@ class EnhancedAsyncFileMover:
         self._lock = asyncio.Lock()
 
     async def start_operation(self, source_root: Path, target_root: Path,
-                            metadata: Optional[Dict] = None) -> Result[OperationSession]:
+                            metadata: Optional[Dict] = None) -> Result[OperationSession, Exception]:
         """Start a new operation session with operation history tracking."""
         async with self._lock:
             if self.started:
@@ -88,7 +88,7 @@ class EnhancedAsyncFileMover:
 
             return Success(self.session)
 
-    async def finish_operation(self, status: str = "completed") -> Result[OperationSession]:
+    async def finish_operation(self, status: str = "completed") -> Result[OperationSession, Exception]:
         """Finish current operation session and record in history."""
         async with self._lock:
             if not self.started:
@@ -111,7 +111,7 @@ class EnhancedAsyncFileMover:
             return Success(self.session)
 
     async def move_file(self, audio_file: AudioFile, target_path: Path,
-                       verify_checksum: bool = False) -> Result[Path]:
+                       verify_checksum: bool = False) -> Result[Path, Exception]:
         """Move an audio file with comprehensive tracking."""
         async with self._lock:
             if not self.started:
@@ -248,7 +248,7 @@ class EnhancedAsyncFileMover:
             return Failure(f"Failed to move {audio_file.path}: {str(e)}")
 
     async def move_cover_art(self, cover_art: CoverArt, target_dir: Path,
-                           verify_checksum: bool = False) -> Result[Optional[Path]]:
+                           verify_checksum: bool = False) -> Result[Optional[Path], Exception]:
         """Move cover art with comprehensive tracking."""
         if not cover_art or not cover_art.path.exists():
             return Success(None)
@@ -382,7 +382,7 @@ class EnhancedAsyncFileMover:
             return Failure(f"Failed to move cover art {cover_art.path}: {str(e)}")
 
     async def move_files_batch(self, moves: List[Tuple[AudioFile, Path]],
-                             verify_checksum: bool = False) -> List[Result[Path]]:
+                             verify_checksum: bool = False) -> List[Result[Path, Exception]]:
         """Move multiple files in parallel with tracking."""
         tasks = []
         for audio_file, target_path in moves:
@@ -392,7 +392,7 @@ class EnhancedAsyncFileMover:
         results = await asyncio.gather(*tasks)
         return results
 
-    async def rollback_session(self, dry_run: bool = False) -> Result[Dict]:
+    async def rollback_session(self, dry_run: bool = False) -> Result[Dict, Exception]:
         """Rollback the entire session using the rollback service."""
         if not self.session_id:
             return Failure("No session to rollback")
@@ -400,7 +400,7 @@ class EnhancedAsyncFileMover:
         return await self.rollback_service.rollback_session(self.session_id, dry_run)
 
     async def rollback_partial(self, operation_ids: List[str],
-                             dry_run: bool = False) -> Result[Dict]:
+                             dry_run: bool = False) -> Result[Dict, Exception]:
         """Rollback specific operations."""
         if not self.session_id:
             return Failure("No session to rollback")
@@ -409,7 +409,7 @@ class EnhancedAsyncFileMover:
             self.session_id, operation_ids, dry_run
         )
 
-    async def get_operation_history(self) -> Result[List[OperationRecord]]:
+    async def get_operation_history(self) -> Result[List[OperationRecord], Exception]:
         """Get all operations for the current session."""
         if not self.session_id:
             return Failure("No session active")
@@ -420,7 +420,7 @@ class EnhancedAsyncFileMover:
         except Exception as e:
             return Failure(f"Failed to get operation history: {str(e)}")
 
-    async def get_session_summary(self) -> Result[Dict]:
+    async def get_session_summary(self) -> Result[Dict, Exception]:
         """Get a summary of the current session."""
         if not self.session_id:
             return Failure("No session active")
@@ -503,7 +503,7 @@ class EnhancedAsyncFileMover:
                 return new_path
             counter += 1
 
-    async def _backup_file_with_record(self, file_path: Path, operation_id: str) -> Result[Path]:
+    async def _backup_file_with_record(self, file_path: Path, operation_id: str) -> Result[Path, Exception]:
         """Create a backup and return the backup path."""
         if not self.backup_dir:
             return Failure("Backup directory not configured")

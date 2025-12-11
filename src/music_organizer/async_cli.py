@@ -136,7 +136,14 @@ class AsyncMusicCLI:
                       cache_warming: Optional[bool] = None,
                       cache_optimize: Optional[bool] = None,
                       warm_cache_dir: Optional[Path] = None,
-                      cache_health: bool = False) -> int:
+                      cache_health: bool = False,
+                      magic_mode: bool = False,
+                      magic_analyze: bool = False,
+                      magic_auto: bool = False,
+                      magic_sample: Optional[int] = None,
+                      magic_preview: bool = False,
+                      magic_save_config: Optional[Path] = None,
+                      magic_threshold: float = 0.6) -> int:
         """Organize music files asynchronously."""
         try:
             # Load configuration
@@ -156,6 +163,19 @@ class AsyncMusicCLI:
 
             if not dry_run:
                 target.mkdir(parents=True, exist_ok=True)
+
+            # Handle Magic Mode
+            if magic_mode or magic_analyze:
+                return await self._handle_magic_mode(
+                    source, target, config, dry_run, magic_analyze, magic_auto,
+                    magic_sample, magic_preview, magic_save_config, magic_threshold,
+                    backup, max_workers, use_processes, enable_parallel_extraction,
+                    memory_threshold, use_cache, cache_ttl, incremental,
+                    force_full_scan, bulk_mode, chunk_size, conflict_strategy,
+                    verify_copies, batch_dirs, preview_bulk, bulk_memory_threshold,
+                    smart_cache, cache_warming, cache_optimize, warm_cache_dir,
+                    cache_health
+                )
 
             # Initialize organizer
             async with AsyncMusicOrganizer(
@@ -713,6 +733,181 @@ class AsyncMusicCLI:
 
         return 0
 
+    async def _handle_magic_mode(
+        self,
+        source: Path,
+        target: Path,
+        config: Config,
+        dry_run: bool,
+        magic_analyze: bool,
+        magic_auto: bool,
+        magic_sample: Optional[int],
+        magic_preview: bool,
+        magic_save_config: Optional[Path],
+        magic_threshold: float,
+        backup: bool,
+        max_workers: int,
+        use_processes: bool,
+        enable_parallel_extraction: bool,
+        memory_threshold: float,
+        use_cache: bool,
+        cache_ttl: Optional[int],
+        incremental: bool,
+        force_full_scan: bool,
+        bulk_mode: bool,
+        chunk_size: int,
+        conflict_strategy: str,
+        verify_copies: bool,
+        batch_dirs: bool,
+        preview_bulk: bool,
+        bulk_memory_threshold: int,
+        smart_cache: Optional[bool],
+        cache_warming: Optional[bool],
+        cache_optimize: Optional[bool],
+        warm_cache_dir: Optional[Path],
+        cache_health: bool
+    ) -> int:
+        """Handle Magic Mode organization."""
+        try:
+            from .core.magic_organizer import MagicMusicOrganizer
+
+            # Initialize Magic Music Organizer
+            magic_organizer = MagicMusicOrganizer(
+                config=config,
+                enable_smart_cache=smart_cache if smart_cache is not None else True,
+                enable_bulk_operations=bulk_mode,
+                magic_mode_confidence_threshold=magic_threshold
+            )
+            await magic_organizer.initialize()
+
+            self.console.print("\n🪄 Magic Mode Activated")
+            self.console.print(f"Source: {source}")
+            self.console.print(f"Target: {target}")
+            self.console.print(f"Mode: {'ANALYZE ONLY' if magic_analyze else 'DRY RUN' if dry_run else 'LIVE'}")
+
+            # Analyze library
+            self.console.print("\n🔍 Analyzing music library for Magic Mode...")
+            suggestion = await magic_organizer.analyze_library_for_magic_mode(
+                source,
+                sample_size=magic_sample,
+                force_analyze=True
+            )
+
+            # Show Magic Mode analysis
+            await magic_organizer._show_magic_analysis(suggestion)
+
+            # If only analyzing, exit here
+            if magic_analyze:
+                if magic_save_config:
+                    config_path = magic_save_config.with_suffix('.json')
+                    await magic_organizer.save_magic_config(config_path)
+                    self.console.print(f"\n💾 Magic Mode configuration saved to: {config_path}", 'green')
+                return 0
+
+            # Preview mode
+            if magic_preview:
+                self.console.print("\n🔮 Generating Magic Mode preview...")
+                preview = await magic_organizer.get_magic_mode_preview(
+                    source,
+                    target,
+                    sample_size=20
+                )
+
+                self.console.print(f"\n📋 Preview - Sample Operations:")
+                for i, op in enumerate(preview["sample_operations"][:10], 1):
+                    self.console.print(f"  {i:2d}. {op['source']} -> {op['target']}")
+                    self.console.print(f"      Size: {op['size_mb']:.1f} MB")
+
+                self.console.print(f"\nTotal estimated operations: {preview['total_estimated_operations']:,}")
+
+                if not dry_run:
+                    confirm = input("\nContinue with Magic Mode organization? (y/N): ")
+                    if confirm.lower() != 'y':
+                        self.console.print("Operation cancelled by user.", 'yellow')
+                        return 0
+
+            # Execute Magic Mode organization
+            if not dry_run or magic_preview:
+                self.console.print("\n🚀 Starting Magic Mode organization...")
+
+                result = await magic_organizer.organize_with_magic_mode(
+                    source_dir=source,
+                    target_dir=target,
+                    dry_run=dry_run,
+                    auto_accept=magic_auto,
+                    sample_size=magic_sample,
+                    chunk_size=chunk_size,
+                    conflict_strategy=conflict_strategy,
+                    verify_copies=verify_copies,
+                    batch_directories=batch_dirs,
+                    bulk_memory_threshold=bulk_memory_threshold
+                )
+
+                # Show results
+                self._show_magic_results(result)
+
+                # Save configuration if requested
+                if magic_save_config:
+                    config_path = magic_save_config.with_suffix('.json')
+                    await magic_organizer.save_magic_config(config_path)
+                    self.console.print(f"\n💾 Magic Mode configuration saved to: {config_path}", 'green')
+
+                # Determine success
+                stats = result.get("stats", {})
+                success_rate = stats.get("success_rate", 0)
+                if success_rate >= 0.9:  # 90% success rate
+                    self.console.print("\n✅ Magic Mode organization completed successfully!", 'green')
+                    return 0
+                else:
+                    self.console.print(f"\n⚠️ Magic Mode organization completed with {success_rate:.1%} success rate", 'yellow')
+                    return 1 if success_rate < 0.5 else 0
+
+            return 0
+
+        except Exception as e:
+            self.console.print(f"Error in Magic Mode: {e}", 'red')
+            if magic_threshold < 0.8:  # Show error details for lower thresholds
+                import traceback
+                self.console.print(traceback.format_exc(), 'red')
+            return 1
+
+    def _show_magic_results(self, result: Dict[str, Any]):
+        """Display Magic Mode organization results."""
+        self.console.print("\n" + "="*60)
+        self.console.print("🪄 MAGIC MODE RESULTS")
+        self.console.print("="*60)
+
+        if "stats" in result:
+            stats = result["stats"]
+            self.console.print(f"\n📊 ORGANIZATION STATISTICS:")
+            self.console.print(f"  Total files processed: {stats.get('total_files', 0):,}")
+            self.console.print(f"  Successfully organized: {stats.get('processed', 0):,}")
+            self.console.print(f"  Errors: {stats.get('errors', 0):,}")
+            self.console.print(f"  Success rate: {stats.get('success_rate', 0):.1%}")
+            self.console.print(f"  Strategy used: {stats.get('strategy_used', 'Unknown')}")
+            self.console.print(f"  Confidence: {stats.get('confidence', 0):.1%}")
+
+        if "organized_files" in result and len(result["organized_files"]) > 0:
+            self.console.print(f"\n📁 SAMPLE ORGANIZED FILES:")
+            for i, file_info in enumerate(result["organized_files"][:5], 1):
+                source = Path(file_info["source"]).name
+                target = Path(file_info["target"]).relative_to(Path(file_info["target"]).anchor)
+                self.console.print(f"  {i}. {source} -> {target}")
+
+            if len(result["organized_files"]) > 5:
+                self.console.print(f"  ... and {len(result['organized_files']) - 5} more files")
+
+        if "errors" in result and len(result["errors"]) > 0:
+            self.console.print(f"\n❌ ERRORS ENCOUNTERED:")
+            for i, error in enumerate(result["errors"][:3], 1):
+                filename = Path(error["file"]).name
+                self.console.print(f"  {i}. {filename}: {error['error']}")
+
+            if len(result["errors"]) > 3:
+                self.console.print(f"  ... and {len(result['errors']) - 3} more errors")
+
+        self.console.print("="*60)
+
 
 def create_async_cli():
     """Create the async CLI interface."""
@@ -764,6 +959,16 @@ def create_async_cli():
     bulk_group.add_argument('--no-batch-dirs', action='store_true', help='Disable batch directory creation')
     bulk_group.add_argument('--preview-bulk', action='store_true', help='Preview bulk operation before execution')
     bulk_group.add_argument('--bulk-memory-threshold', type=int, default=512, help='Memory threshold for bulk operations in MB (default: 512)')
+
+    # Magic Mode arguments
+    magic_group = org_parser.add_argument_group('Magic Mode', 'Zero-configuration intelligent organization')
+    magic_group.add_argument('--magic', action='store_true', help='Enable Magic Mode for zero-configuration organization')
+    magic_group.add_argument('--magic-analyze', action='store_true', help='Analyze library and show Magic Mode suggestions')
+    magic_group.add_argument('--magic-auto', action='store_true', help='Auto-accept Magic Mode suggestions without confirmation')
+    magic_group.add_argument('--magic-sample', type=int, default=None, help='Sample size for Magic Mode analysis (default: all files)')
+    magic_group.add_argument('--magic-preview', action='store_true', help='Preview Magic Mode organization before execution')
+    magic_group.add_argument('--magic-save-config', type=Path, help='Save Magic Mode configuration to file')
+    magic_group.add_argument('--magic-threshold', type=float, default=0.6, help='Confidence threshold for Magic Mode auto-accept (default: 0.6)')
 
     org_parser.add_argument('--debug', action='store_true', help='Enable debug output')
 
@@ -829,7 +1034,14 @@ def create_async_cli():
             cache_warming=getattr(args, 'cache_warming', None) if hasattr(args, 'cache_warming') else None,
             cache_optimize=getattr(args, 'cache_optimize', None) if hasattr(args, 'cache_optimize') else None,
             warm_cache_dir=getattr(args, 'warm_cache_dir', None) if hasattr(args, 'warm_cache_dir') else None,
-            cache_health=getattr(args, 'cache_health', False) if hasattr(args, 'cache_health') else False
+            cache_health=getattr(args, 'cache_health', False) if hasattr(args, 'cache_health') else False,
+            magic_mode=getattr(args, 'magic', False) if hasattr(args, 'magic') else False,
+            magic_analyze=getattr(args, 'magic_analyze', False) if hasattr(args, 'magic_analyze') else False,
+            magic_auto=getattr(args, 'magic_auto', False) if hasattr(args, 'magic_auto') else False,
+            magic_sample=getattr(args, 'magic_sample', None) if hasattr(args, 'magic_sample') else None,
+            magic_preview=getattr(args, 'magic_preview', False) if hasattr(args, 'magic_preview') else False,
+            magic_save_config=getattr(args, 'magic_save_config', None) if hasattr(args, 'magic_save_config') else None,
+            magic_threshold=getattr(args, 'magic_threshold', 0.6) if hasattr(args, 'magic_threshold') else 0.6
         ))
     elif args.command == 'scan':
         return asyncio.run(cli.scan(

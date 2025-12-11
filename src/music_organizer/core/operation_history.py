@@ -194,7 +194,7 @@ class OperationHistoryTracker:
             """)
 
     async def start_session(self, session_id: str, source_root: Path, target_root: Path,
-                           metadata: Optional[Dict] = None) -> Result[OperationSession]:
+                           metadata: Optional[Dict] = None) -> Result[OperationSession, Exception]:
         """Start a new operation session."""
         try:
             session = OperationSession(
@@ -234,7 +234,7 @@ class OperationHistoryTracker:
         except Exception as e:
             return Failure(f"Failed to start session: {str(e)}")
 
-    async def record_operation(self, operation: OperationRecord) -> Result[None]:
+    async def record_operation(self, operation: OperationRecord) -> Result[None, Exception]:
         """Record a single operation."""
         try:
             with sqlite3.connect(self.db_path) as conn:
@@ -283,7 +283,7 @@ class OperationHistoryTracker:
         except Exception as e:
             return Failure(f"Failed to record operation: {str(e)}")
 
-    async def end_session(self, session_id: str, status: str = "completed") -> Result[OperationSession]:
+    async def end_session(self, session_id: str, status: str = "completed") -> Result[OperationSession, Exception]:
         """End an operation session."""
         try:
             with sqlite3.connect(self.db_path) as conn:
@@ -421,7 +421,7 @@ class OperationHistoryTracker:
         except Exception:
             return []
 
-    async def delete_session(self, session_id: str) -> Result[None]:
+    async def delete_session(self, session_id: str) -> Result[None, Exception]:
         """Delete a session and all its operations."""
         try:
             with sqlite3.connect(self.db_path) as conn:
@@ -461,7 +461,7 @@ class OperationRollbackService:
         return h.hexdigest()
 
     async def rollback_session(self, session_id: str,
-                             dry_run: bool = False) -> Result[Dict[str, Union[int, List[str]]]]:
+                             dry_run: bool = False) -> Result[Dict[str, Union[int, List[str]]], Exception]:
         """Rollback all operations in a session."""
         try:
             # Get session
@@ -583,7 +583,7 @@ class OperationRollbackService:
 
     async def rollback_partial(self, session_id: str,
                              operation_ids: List[str],
-                             dry_run: bool = False) -> Result[Dict[str, Union[int, List[str]]]]:
+                             dry_run: bool = False) -> Result[Dict[str, Union[int, List[str]]], Exception]:
         """Rollback specific operations from a session."""
         try:
             # Get session
