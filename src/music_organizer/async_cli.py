@@ -12,6 +12,7 @@ from .core.classifier import ContentClassifier
 from .core.bulk_operations import BulkOperationConfig, ConflictStrategy
 from .core.bulk_organizer import BulkAsyncOrganizer
 from .core.bulk_progress_tracker import BulkProgressTracker
+from .core.organization_preview import OrganizationPreview, InteractivePreview
 from .models.config import Config, load_config
 from .exceptions import MusicOrganizerError
 from .progress_tracker import IntelligentProgressTracker, ProgressStage
@@ -143,7 +144,11 @@ class AsyncMusicCLI:
                       magic_sample: Optional[int] = None,
                       magic_preview: bool = False,
                       magic_save_config: Optional[Path] = None,
-                      magic_threshold: float = 0.6) -> int:
+                      magic_threshold: float = 0.6,
+                      preview: bool = False,
+                      preview_detailed: bool = False,
+                      preview_interactive: bool = False,
+                      export_preview: Optional[Path] = None) -> int:
         """Organize music files asynchronously."""
         try:
             # Load configuration
@@ -175,6 +180,17 @@ class AsyncMusicCLI:
                     verify_copies, batch_dirs, preview_bulk, bulk_memory_threshold,
                     smart_cache, cache_warming, cache_optimize, warm_cache_dir,
                     cache_health
+                )
+
+            # Handle Organization Preview
+            if preview or preview_detailed or preview_interactive:
+                return await self._handle_organization_preview(
+                    source, target, config, preview_detailed, preview_interactive,
+                    export_preview, max_workers, use_processes,
+                    enable_parallel_extraction, memory_threshold, use_cache,
+                    cache_ttl, incremental, force_full_scan, bulk_mode,
+                    chunk_size, conflict_strategy, smart_cache, cache_warming,
+                    cache_optimize, warm_cache_dir
                 )
 
             # Initialize organizer
@@ -908,6 +924,154 @@ class AsyncMusicCLI:
 
         self.console.print("="*60)
 
+    async def _handle_organization_preview(self,
+                                           source: Path,
+                                           target: Path,
+                                           config: Config,
+                                           preview_detailed: bool,
+                                           preview_interactive: bool,
+                                           export_preview: Optional[Path],
+                                           max_workers: int,
+                                           use_processes: bool,
+                                           enable_parallel_extraction: bool,
+                                           memory_threshold: float,
+                                           use_cache: bool,
+                                           cache_ttl: Optional[int],
+                                           incremental: bool,
+                                           force_full_scan: bool,
+                                           bulk_mode: bool,
+                                           chunk_size: int,
+                                           conflict_strategy: ConflictStrategy,
+                                           smart_cache: Optional[bool],
+                                           cache_warming: Optional[bool],
+                                           cache_optimize: Optional[bool],
+                                           warm_cache_dir: Optional[Path]) -> int:
+        """Handle organization preview functionality."""
+        try:
+            self.console.print("📋 ORGANIZATION PREVIEW MODE", style="bold")
+            self.console.print(f"Source: {source}")
+            self.console.print(f"Target: {target}")
+            self.console.print("-" * 40)
+
+            # Initialize metadata handler and classifier
+            metadata_handler = MetadataHandler()
+            classifier = ContentClassifier()
+
+            # Scan source directory
+            self.console.print("\n🔍 Scanning source directory...")
+            audio_files = []
+
+            # Use simple directory scan since we just need to collect files
+            import os
+            from pathlib import Path
+
+            for root, dirs, files in os.walk(source):
+                for file in files:
+                    file_path = Path(root) / file
+                    try:
+                        # Skip if not an audio file
+                        if file_path.suffix.lower() not in ['.mp3', '.flac', '.wav', '.m4a', '.aac', '.ogg']:
+                            continue
+
+                        # Extract metadata
+                        audio_file = await asyncio.get_event_loop().run_in_executor(
+                            None, metadata_handler.extract_metadata, file_path
+                        )
+
+                        # Classify content type
+                        content_type, _ = await asyncio.get_event_loop().run_in_executor(
+                            None, classifier.classify, audio_file
+                        )
+
+                        audio_files.append(audio_file)
+
+                    except Exception as e:
+                        self.console.print(f"Warning: Could not process {file_path}: {e}", 'yellow')
+
+                if not audio_files:
+                    self.console.print("No audio files found in source directory.")
+                    return 0
+
+                self.console.print(f"Found {len(audio_files)} audio files")
+
+                # Generate target paths
+                self.console.print("\n🎯 Generating organization plan...")
+                target_mapping = {}
+                conflicts = {}
+
+                def generate_target_path(audio_file, target_dir: Path) -> Path:
+                    """Simple target path generator for preview."""
+                    # Get artist and album info
+                    artist = audio_file.primary_artist or "Unknown Artist"
+                    if not artist and audio_file.artists:
+                        artist = audio_file.artists[0]
+
+                    album = audio_file.album or "Unknown Album"
+                    year = audio_file.year or ""
+
+                    # Get content type directory
+                    content_dir = "Albums"
+                    if audio_file.content_type:
+                        content_dir = {
+                            "live": "Live",
+                            "compilation": "Compilations",
+                            "collaboration": "Collaborations"
+                        }.get(audio_file.content_type.value, "Albums")
+
+                    # Format filename
+                    track_num = f"{audio_file.track_number:02d} " if audio_file.track_number else ""
+                    title = audio_file.title or audio_file.path.stem
+                    filename = f"{track_num}{title}{audio_file.path.suffix}"
+
+                    # Build path
+                    if year:
+                        album_dir = f"{album} ({year})"
+                    else:
+                        album_dir = album
+
+                    return target_dir / content_dir / artist / album_dir / filename
+
+                for audio_file in audio_files:
+                    try:
+                        # Generate target path
+                        target_path = generate_target_path(audio_file, target)
+                        target_mapping[audio_file.path] = target_path
+                    except Exception as e:
+                        self.console.print(f"Warning: Could not generate target for {audio_file.path}: {e}", 'yellow')
+
+                # Create organization preview
+                preview = OrganizationPreview(config)
+                await preview.collect_operations(audio_files, target_mapping, conflicts)
+
+                # Display preview
+                if preview_interactive:
+                    self.console.print("\n🎮 Starting interactive preview...")
+                    interactive_preview = InteractivePreview(preview)
+                    proceed = await interactive_preview.run_interactive_preview()
+
+                    if proceed:
+                        self.console.print("\n✅ Proceeding with organization...")
+                        # Here you could call the actual organization logic
+                        # For now, just show what would happen
+                        preview.display_preview(detailed=True)
+                    else:
+                        self.console.print("\n❌ Organization cancelled.")
+                        return 0
+                else:
+                    preview.display_preview(detailed=preview_detailed)
+
+                # Export preview if requested
+                if export_preview:
+                    preview.export_preview(export_preview)
+
+                return 0
+
+        except Exception as e:
+            self.console.print(f"Error during preview: {e}", 'red')
+            if isinstance(e, MusicOrganizerError):
+                self.console.print(f"Details: {e}", 'red')
+            return 1
+
 
 def create_async_cli():
     """Create the async CLI interface."""
@@ -969,6 +1133,13 @@ def create_async_cli():
     magic_group.add_argument('--magic-preview', action='store_true', help='Preview Magic Mode organization before execution')
     magic_group.add_argument('--magic-save-config', type=Path, help='Save Magic Mode configuration to file')
     magic_group.add_argument('--magic-threshold', type=float, default=0.6, help='Confidence threshold for Magic Mode auto-accept (default: 0.6)')
+
+    # Organization preview arguments
+    preview_group = org_parser.add_argument_group('Organization Preview', 'Preview and visualize organization before execution')
+    preview_group.add_argument('--preview', action='store_true', help='Show organization preview with summary')
+    preview_group.add_argument('--preview-detailed', action='store_true', help='Show detailed preview with all operations')
+    preview_group.add_argument('--preview-interactive', action='store_true', help='Interactive preview with filtering and review')
+    preview_group.add_argument('--export-preview', type=Path, help='Export preview data to JSON file')
 
     org_parser.add_argument('--debug', action='store_true', help='Enable debug output')
 
@@ -1041,7 +1212,11 @@ def create_async_cli():
             magic_sample=getattr(args, 'magic_sample', None) if hasattr(args, 'magic_sample') else None,
             magic_preview=getattr(args, 'magic_preview', False) if hasattr(args, 'magic_preview') else False,
             magic_save_config=getattr(args, 'magic_save_config', None) if hasattr(args, 'magic_save_config') else None,
-            magic_threshold=getattr(args, 'magic_threshold', 0.6) if hasattr(args, 'magic_threshold') else 0.6
+            magic_threshold=getattr(args, 'magic_threshold', 0.6) if hasattr(args, 'magic_threshold') else 0.6,
+            preview=getattr(args, 'preview', False) if hasattr(args, 'preview') else False,
+            preview_detailed=getattr(args, 'preview_detailed', False) if hasattr(args, 'preview_detailed') else False,
+            preview_interactive=getattr(args, 'preview_interactive', False) if hasattr(args, 'preview_interactive') else False,
+            export_preview=getattr(args, 'export_preview', None) if hasattr(args, 'export_preview') else None
         ))
     elif args.command == 'scan':
         return asyncio.run(cli.scan(
