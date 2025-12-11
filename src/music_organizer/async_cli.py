@@ -131,7 +131,12 @@ class AsyncMusicCLI:
                       verify_copies: bool = False,
                       batch_dirs: bool = True,
                       preview_bulk: bool = False,
-                      bulk_memory_threshold: int = 512) -> int:
+                      bulk_memory_threshold: int = 512,
+                      smart_cache: Optional[bool] = None,
+                      cache_warming: Optional[bool] = None,
+                      cache_optimize: Optional[bool] = None,
+                      warm_cache_dir: Optional[Path] = None,
+                      cache_health: bool = False) -> int:
         """Organize music files asynchronously."""
         try:
             # Load configuration
@@ -218,6 +223,42 @@ class AsyncMusicCLI:
 
                 scan_type = "new/modified" if incremental and not force_full_scan else "audio"
                 self.console.print(f"Found {file_count} {scan_type} files")
+
+                # Smart cache operations
+                if use_cache:
+                    # Determine smart cache settings
+                    enable_smart_cache = smart_cache if smart_cache is not None else (not getattr(args, 'no_smart_cache', False))
+                    enable_cache_warming = cache_warming if cache_warming is not None else (not getattr(args, 'no_cache_warming', False))
+                    enable_cache_optimize = cache_optimize if cache_optimize is not None else (not getattr(args, 'no_cache_optimize', False))
+
+                    if enable_smart_cache:
+                        from .core.smart_cached_metadata import get_smart_cached_metadata_handler
+                        smart_handler = get_smart_cached_metadata_handler(
+                            enable_smart_cache=True,
+                            cache_warming_enabled=enable_cache_warming,
+                            auto_optimize=enable_cache_optimize
+                        )
+                        self.console.print(f"Smart Cache: ENABLED", 'green')
+
+                        # Cache warming
+                        if warm_cache_dir and warm_cache_dir.exists():
+                            self.console.print(f"\n🔥 Warming cache for {warm_cache_dir}...")
+                            warmed = smart_handler.warm_cache(warm_cache_dir, recursive=True)
+                            self.console.print(f"Warmed cache with {warmed} files", 'green')
+                        elif enable_cache_warming and not incremental:
+                            # Auto-warm source directory if not incremental
+                            self.console.print(f"\n🔥 Auto-warming cache for {source}...")
+                            warmed = smart_handler.warm_cache(source, recursive=True, max_files=500)
+                            self.console.print(f"Warmed cache with {warmed} files", 'green')
+
+                        # Cache optimization
+                        if enable_cache_optimize:
+                            self.console.print("\n⚡ Optimizing cache...")
+                            opt_results = smart_handler.optimize_cache(force=False)
+                            if 'skipped' not in opt_results:
+                                self.console.print(f"Optimization complete: {opt_results}", 'green')
+                else:
+                    self.console.print("Smart Cache: DISABLED", 'yellow')
 
                 # Show bulk mode information if enabled
                 if bulk_mode:
@@ -461,6 +502,33 @@ class AsyncMusicCLI:
                     self.console.print(f"  Memory peak: {extraction_stats.get('memory_peak_mb', 0):.1f} MB")
                     self.console.print(f"  Worker efficiency: {extraction_stats.get('worker_efficiency', 0):.2f}")
 
+                # Show cache health report if requested
+                if use_cache and cache_health and enable_smart_cache:
+                    from .core.smart_cached_metadata import get_smart_cached_metadata_handler
+                    smart_handler = get_smart_cached_metadata_handler()
+                    health = smart_handler.get_cache_health()
+                    stats = smart_handler.get_cache_stats()
+
+                    self.console.print("\n🏥 Cache Health Report:")
+                    self.console.print(f"  Overall health: {health['overall_health'].upper()}",
+                                     'green' if health['overall_health'] == 'good' else
+                                     'yellow' if health['overall_health'] == 'fair' else 'red')
+
+                    self.console.print(f"  Cache entries: {stats['total_entries']} total, {stats['valid_entries']} valid")
+                    self.console.print(f"  Cache size: {stats['size_mb']:.1f} MB")
+                    self.console.print(f"  Average stability: {stats['avg_stability_score']:.2f}")
+                    self.console.print(f"  Frequently accessed: {stats['frequently_accessed_files']} files")
+
+                    if health['recommendations']:
+                        self.console.print("\n💡 Recommendations:")
+                        for rec in health['recommendations']:
+                            self.console.print(f"  • {rec}", 'cyan')
+
+                    if health['warnings']:
+                        self.console.print("\n⚠️  Warnings:")
+                        for warn in health['warnings']:
+                            self.console.print(f"  • {warn}", 'yellow')
+
                 return 0
 
         except MusicOrganizerError as e:
@@ -672,6 +740,17 @@ def create_async_cli():
     org_parser.add_argument('--cache', action='store_true', default=True, help='Enable metadata caching (default: enabled)')
     org_parser.add_argument('--no-cache', action='store_true', help='Disable metadata caching')
     org_parser.add_argument('--cache-ttl', type=int, help='Cache TTL in days (default: 30)')
+
+    # Smart caching options
+    smart_cache_group = org_parser.add_argument_group('Smart Caching', 'Intelligent caching with adaptive TTL and optimization')
+    smart_cache_group.add_argument('--smart-cache', action='store_true', help='Enable smart caching with adaptive TTL (default: enabled when possible)')
+    smart_cache_group.add_argument('--no-smart-cache', action='store_true', help='Disable smart caching, use basic cache instead')
+    smart_cache_group.add_argument('--cache-warming', action='store_true', help='Enable automatic cache warming')
+    smart_cache_group.add_argument('--no-cache-warming', action='store_true', help='Disable cache warming')
+    smart_cache_group.add_argument('--cache-optimize', action='store_true', help='Enable automatic cache optimization (default: enabled)')
+    smart_cache_group.add_argument('--no-cache-optimize', action='store_true', help='Disable automatic cache optimization')
+    smart_cache_group.add_argument('--warm-cache-dir', type=Path, help='Directory to warm cache before organization')
+    smart_cache_group.add_argument('--cache-health', action='store_true', help='Show cache health report after organization')
     org_parser.add_argument('--incremental', action='store_true', help='Only process new or modified files (incremental scan)')
     org_parser.add_argument('--force-full-scan', action='store_true', help='Force full scan instead of incremental')
 
@@ -745,7 +824,12 @@ def create_async_cli():
             verify_copies=args.verify_copies,
             batch_dirs=not args.no_batch_dirs,
             preview_bulk=args.preview_bulk,
-            bulk_memory_threshold=args.bulk_memory_threshold
+            bulk_memory_threshold=args.bulk_memory_threshold,
+            smart_cache=getattr(args, 'smart_cache', None),
+            cache_warming=getattr(args, 'cache_warming', None) if hasattr(args, 'cache_warming') else None,
+            cache_optimize=getattr(args, 'cache_optimize', None) if hasattr(args, 'cache_optimize') else None,
+            warm_cache_dir=getattr(args, 'warm_cache_dir', None) if hasattr(args, 'warm_cache_dir') else None,
+            cache_health=getattr(args, 'cache_health', False) if hasattr(args, 'cache_health') else False
         ))
     elif args.command == 'scan':
         return asyncio.run(cli.scan(
