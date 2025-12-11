@@ -9,9 +9,9 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 
-from ...base import PathPlugin, PluginInfo
-from ....models.audio_file import AudioFile
-from ...core.regex_rule_engine import RegexRuleEngine, Rule
+from ..base import PathPlugin, PluginInfo
+from ...models.audio_file import AudioFile
+from ...core.regex_rules import RegexRuleEngine, Rule
 
 logger = logging.getLogger(__name__)
 

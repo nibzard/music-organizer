@@ -7,7 +7,7 @@ from datetime import datetime
 
 from ..base import PathPlugin, PluginInfo
 from ...models.audio_file import AudioFile
-from ...models.content_type import ContentType
+from ...domain.classification.value_objects import ContentType
 
 
 def create_plugin(config: Optional[Dict[str, Any]] = None) -> PathPlugin:

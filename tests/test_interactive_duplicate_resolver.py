@@ -19,7 +19,8 @@ from src.music_organizer.core.interactive_duplicate_resolver import (
 )
 # quick_duplicate_resolution function doesn't exist - removed import
 from src.music_organizer.ui.duplicate_resolver_ui import DuplicateResolverUI
-from src.music_organizer.models.audio_file import AudioFile, Metadata
+from src.music_organizer.models.audio_file import AudioFile
+from src.music_organizer.domain.value_objects import Metadata
 from src.music_organizer.domain.value_objects import FileFormat, ArtistName
 from src.music_organizer.exceptions import MusicOrganizerError
 
