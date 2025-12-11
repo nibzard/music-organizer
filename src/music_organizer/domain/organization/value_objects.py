@@ -267,7 +267,7 @@ class PathTemplate:
         for var in required_vars:
             if f"{{{var}}}" not in self.template:
                 # Check if it's in a conditional
-                if not re.search(rf'\{{if:{var}\}.*?\{{endif\}}', self.template):
+                if not re.search(r'\{if:' + var + r'\}.*?\{endif\}', self.template):
                     missing_vars.append(var)
         return missing_vars
 

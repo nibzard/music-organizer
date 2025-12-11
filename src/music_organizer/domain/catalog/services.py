@@ -8,6 +8,7 @@ from typing import List, Optional, Dict, Any, Tuple
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
+from ..result import Result, success, failure, collect, MetadataError, DuplicateError, NotFoundError
 from .entities import Recording, Release, Artist, Catalog
 from .value_objects import ArtistName, Metadata, AudioPath
 from .repositories import RecordingRepository, ReleaseRepository, ArtistRepository
@@ -20,55 +21,59 @@ class MetadataService:
         self.recording_repo = recording_repo
         self._executor = ThreadPoolExecutor(max_workers=4)
 
-    async def enhance_metadata(self, recording: Recording, enhanced_metadata: Metadata) -> Recording:
+    async def enhance_metadata(self, recording: Recording, enhanced_metadata: Metadata) -> Result[Recording, MetadataError]:
         """Enhance a recording's metadata with additional information."""
-        # Create new metadata with enhanced fields
-        updated_metadata = Metadata(
-            title=enhanced_metadata.title or recording.metadata.title,
-            artists=enhanced_metadata.artists or recording.metadata.artists,
-            album=enhanced_metadata.album or recording.metadata.album,
-            year=enhanced_metadata.year or recording.metadata.year,
-            genre=enhanced_metadata.genre or recording.metadata.genre,
-            track_number=enhanced_metadata.track_number or recording.metadata.track_number,
-            total_tracks=enhanced_metadata.total_tracks or recording.metadata.total_tracks,
-            disc_number=enhanced_metadata.disc_number or recording.metadata.disc_number,
-            total_discs=enhanced_metadata.total_discs or recording.metadata.total_discs,
-            albumartist=enhanced_metadata.albumartist or recording.metadata.albumartist,
-            composer=enhanced_metadata.composer or recording.metadata.composer,
-            # Preserve technical metadata
-            duration_seconds=recording.metadata.duration_seconds,
-            bitrate=recording.metadata.bitrate,
-            sample_rate=recording.metadata.sample_rate,
-            channels=recording.metadata.channels,
-            file_hash=recording.metadata.file_hash,
-            acoustic_fingerprint=recording.metadata.acoustic_fingerprint,
-            # Preserve format-specific metadata
-            format_metadata=recording.metadata.format_metadata,
-        )
+        try:
+            # Create new metadata with enhanced fields
+            updated_metadata = Metadata(
+                title=enhanced_metadata.title or recording.metadata.title,
+                artists=enhanced_metadata.artists or recording.metadata.artists,
+                album=enhanced_metadata.album or recording.metadata.album,
+                year=enhanced_metadata.year or recording.metadata.year,
+                genre=enhanced_metadata.genre or recording.metadata.genre,
+                track_number=enhanced_metadata.track_number or recording.metadata.track_number,
+                total_tracks=enhanced_metadata.total_tracks or recording.metadata.total_tracks,
+                disc_number=enhanced_metadata.disc_number or recording.metadata.disc_number,
+                total_discs=enhanced_metadata.total_discs or recording.metadata.total_discs,
+                albumartist=enhanced_metadata.albumartist or recording.metadata.albumartist,
+                composer=enhanced_metadata.composer or recording.metadata.composer,
+                # Preserve technical metadata
+                duration_seconds=recording.metadata.duration_seconds,
+                bitrate=recording.metadata.bitrate,
+                sample_rate=recording.metadata.sample_rate,
+                channels=recording.metadata.channels,
+                file_hash=recording.metadata.file_hash,
+                acoustic_fingerprint=recording.metadata.acoustic_fingerprint,
+                # Preserve format-specific metadata
+                format_metadata=recording.metadata.format_metadata,
+            )
 
-        # Update recording with new metadata
-        recording.metadata = updated_metadata
+            # Update recording with new metadata
+            recording.metadata = updated_metadata
 
-        # Save changes
-        await self.recording_repo.save(recording)
+            # Save changes
+            await self.recording_repo.save(recording)
 
-        return recording
+            return success(recording)
+        except Exception as e:
+            return failure(MetadataError(f"Failed to enhance metadata: {e}"))
 
     async def batch_enhance_metadata(
         self,
         recordings: List[Recording],
         enhancements: List[Metadata]
-    ) -> List[Recording]:
+    ) -> Result[List[Recording], MetadataError]:
         """Enhance metadata for multiple recordings in parallel."""
         if len(recordings) != len(enhancements):
-            raise ValueError("Recordings and enhancements must have same length")
+            return failure(MetadataError("Recordings and enhancements must have same length"))
 
         tasks = [
             self.enhance_metadata(recording, enhancement)
             for recording, enhancement in zip(recordings, enhancements)
         ]
 
-        return await asyncio.gather(*tasks)
+        results = await asyncio.gather(*tasks)
+        return collect(results).map_error(lambda errors: MetadataError(f"Multiple errors: {errors}"))
 
     async def normalize_artist_names(self, recordings: List[Recording]) -> List[Recording]:
         """Normalize artist names across multiple recordings."""
@@ -156,40 +161,45 @@ class CatalogService:
         self.release_repo = release_repo
         self.artist_repo = artist_repo
 
-    async def add_recording_to_catalog(self, catalog: Catalog, recording: Recording) -> None:
+    async def add_recording_to_catalog(self, catalog: Catalog, recording: Recording) -> Result[None, DuplicateError]:
         """Add a recording to the catalog, maintaining invariants."""
-        # Check for duplicates
-        existing = await self.recording_repo.find_by_path(recording.path)
-        if existing:
-            raise ValueError(f"Recording already exists at path: {recording.path}")
+        try:
+            # Check for duplicates
+            existing = await self.recording_repo.find_by_path(recording.path)
+            if existing:
+                return failure(DuplicateError(f"Recording already exists at path: {recording.path}"))
 
-        # Find or create artist
-        for artist_name in recording.artists:
-            artist = await self.artist_repo.find_by_name(artist_name)
-            if not artist:
-                artist = Artist(name=artist_name)
-                await self.artist_repo.save(artist)
+            # Find or create artist
+            for artist_name in recording.artists:
+                artist = await self.artist_repo.find_by_name(artist_name)
+                if not artist:
+                    artist = Artist(name=artist_name)
+                    await self.artist_repo.save(artist)
 
-        # Find or create release
-        if recording.metadata.album:
-            release = await self.release_repo.find_by_title_and_artist(
-                recording.metadata.album,
-                recording.primary_artist
-            )
-            if not release:
-                release = Release(
-                    title=recording.metadata.album,
-                    primary_artist=recording.primary_artist,
-                    year=recording.metadata.year
+            # Find or create release
+            if recording.metadata.album:
+                release = await self.release_repo.find_by_title_and_artist(
+                    recording.metadata.album,
+                    recording.primary_artist
                 )
+                if not release:
+                    release = Release(
+                        title=recording.metadata.album,
+                        primary_artist=recording.primary_artist,
+                        year=recording.metadata.year
+                    )
+                    await self.release_repo.save(release)
+
+                release.add_recording(recording)
                 await self.release_repo.save(release)
 
-            release.add_recording(recording)
-            await self.release_repo.save(release)
+            # Add to catalog
+            catalog.add_recording(recording)
+            await self.recording_repo.save(recording)
 
-        # Add to catalog
-        catalog.add_recording(recording)
-        await self.recording_repo.save(recording)
+            return success(None)
+        except Exception as e:
+            return failure(DuplicateError(f"Failed to add recording to catalog: {e}"))
 
     async def remove_recording_from_catalog(self, catalog: Catalog, recording: Recording) -> None:
         """Remove a recording from the catalog, cleaning up references."""

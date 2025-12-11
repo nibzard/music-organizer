@@ -10,8 +10,10 @@ import shutil
 from pathlib import Path
 from typing import List, Optional, Dict, Any, Tuple
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 
-from .entities import OrganizationRule, FolderStructure, MovedFile, OrganizationSession, ConflictResolution
+from ..result import Result, success, failure, OrganizationError
+from .entities import OrganizationRule, FolderStructure, MovedFile, OrganizationSession, ConflictResolution, OperationStatus
 from .value_objects import TargetPath, OrganizationPattern, ConflictStrategy
 
 
@@ -104,7 +106,7 @@ class OrganizationService:
         target_path: TargetPath,
         conflict_strategy: ConflictStrategy = ConflictStrategy.SKIP,
         dry_run: bool = False
-    ) -> MovedFile:
+    ) -> Result[MovedFile, OrganizationError]:
         """Organize a single file."""
         moved_file = MovedFile(
             source_path=source_path,
@@ -116,7 +118,7 @@ class OrganizationService:
             # Check if source exists
             if not source_path.exists():
                 moved_file.mark_failed(f"Source file does not exist: {source_path}")
-                return moved_file
+                return success(moved_file)  # Return as success with error info in the object
 
             # Create target directory if needed
             if not dry_run:
@@ -133,7 +135,7 @@ class OrganizationService:
                 if resolution.strategy == ConflictStrategy.SKIP:
                     moved_file.mark_skipped("File already exists at target")
                     moved_file.set_conflict_resolution(resolution)
-                    return moved_file
+                    return success(moved_file)
                 else:
                     target_path = TargetPath(
                         path=resolution.final_path,
@@ -154,7 +156,7 @@ class OrganizationService:
                 # Verify the move
                 if not target_path.path.exists():
                     moved_file.mark_failed("File move failed - target does not exist")
-                    return moved_file
+                    return success(moved_file)
 
                 # Calculate checksum after move
                 moved_file.checksum_after = await self._calculate_checksum(target_path.path)
@@ -162,14 +164,14 @@ class OrganizationService:
                 # Verify checksums match
                 if moved_file.checksum_before != moved_file.checksum_after:
                     moved_file.mark_failed("File corruption detected during move")
-                    return moved_file
+                    return success(moved_file)
 
             moved_file.mark_completed()
+            return success(moved_file)
 
         except Exception as e:
             moved_file.mark_failed(str(e))
-
-        return moved_file
+            return failure(OrganizationError(f"Failed to organize file {source_path}: {e}"))
 
     async def organize_session(self, session: OrganizationSession, dry_run: bool = False) -> None:
         """Execute an entire organization session."""

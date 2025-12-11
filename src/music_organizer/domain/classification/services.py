@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any, Tuple, Set
 from concurrent.futures import ThreadPoolExecutor
 
+from ..result import Result, success, failure, collect
 from .entities import Classifier, DuplicateGroup, ClassificationRule, ContentType
 from .value_objects import (
     ContentTypeEnum,
@@ -32,68 +33,72 @@ class ClassificationService:
         self,
         recording: Any,  # catalog.Recording
         context: Optional[ClassificationContext] = None
-    ) -> Dict[str, Any]:
+    ) -> Result[Dict[str, Any], Exception]:
         """Classify a recording with all available methods."""
-        classification_result = {
-            "recording_id": id(recording),
-            "content_type": ContentTypeEnum.UNKNOWN,
-            "content_type_confidence": 0.0,
-            "genres": [],
-            "energy_level": EnergyLevel.MEDIUM,
-            "features": None,
-            "classification_source": "automatic",
-            "confidence": 0.0
-        }
+        try:
+            classification_result = {
+                "recording_id": id(recording),
+                "content_type": ContentTypeEnum.UNKNOWN,
+                "content_type_confidence": 0.0,
+                "genres": [],
+                "energy_level": EnergyLevel.MEDIUM,
+                "features": None,
+                "classification_source": "automatic",
+                "confidence": 0.0
+            }
 
-        # Extract metadata
-        metadata = recording.metadata if hasattr(recording, 'metadata') else recording
+            # Extract metadata
+            metadata = recording.metadata if hasattr(recording, 'metadata') else recording
 
-        # Extract audio features if available
-        features = await self._extract_audio_features(recording)
-        classification_result["features"] = features
+            # Extract audio features if available
+            features = await self._extract_audio_features(recording)
+            classification_result["features"] = features
 
-        # Classify content type
-        content_type, content_confidence = self.classifier.classify_content_type(
-            metadata, features
-        )
-        classification_result["content_type"] = content_type
-        classification_result["content_type_confidence"] = content_confidence
+            # Classify content type
+            content_type, content_confidence = self.classifier.classify_content_type(
+                metadata, features
+            )
+            classification_result["content_type"] = content_type
+            classification_result["content_type_confidence"] = content_confidence
 
-        # Classify genre
-        genre_classification = self.classifier.classify_genre(metadata, features)
-        classification_result["genres"] = genre_classification.get_all_genres()
-        classification_result["genre_confidence"] = genre_classification.confidence_score
+            # Classify genre
+            genre_classification = self.classifier.classify_genre(metadata, features)
+            classification_result["genres"] = genre_classification.get_all_genres()
+            classification_result["genre_confidence"] = genre_classification.confidence_score
 
-        # Get energy level from features
-        if features:
-            classification_result["energy_level"] = features.energy_level
+            # Get energy level from features
+            if features:
+                classification_result["energy_level"] = features.energy_level
 
-        # Apply context-based adjustments
-        if context:
-            classification_result = self._apply_context_adjustments(
-                classification_result, context
+            # Apply context-based adjustments
+            if context:
+                classification_result = self._apply_context_adjustments(
+                    classification_result, context
+                )
+
+            # Calculate overall confidence
+            classification_result["confidence"] = (
+                content_confidence * 0.4 +
+                genre_classification.confidence_score * 0.4 +
+                (0.3 if features else 0.0)
             )
 
-        # Calculate overall confidence
-        classification_result["confidence"] = (
-            content_confidence * 0.4 +
-            genre_classification.confidence_score * 0.4 +
-            (0.3 if features else 0.0)
-        )
-
-        return classification_result
+            return success(classification_result)
+        except Exception as e:
+            return failure(e)
 
     async def batch_classify(
         self,
         recordings: List[Any],
         context: Optional[ClassificationContext] = None
-    ) -> List[Dict[str, Any]]:
+    ) -> Result[List[Dict[str, Any]], List[Exception]]:
         """Classify multiple recordings in parallel."""
         tasks = [
             self.classify_recording(recording, context)
             for recording in recordings
         ]
-        return await asyncio.gather(*tasks)
+        results = await asyncio.gather(*tasks)
+        return collect(results)
 
     async def learn_from_corrections(
         self,

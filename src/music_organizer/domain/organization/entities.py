@@ -193,10 +193,8 @@ class FolderStructure:
 
     # Structure identity
     name: str
-    description: Optional[str] = None
-
-    # Structure definition
     hierarchy: List[str]  # List of folder names or patterns
+    description: Optional[str] = None
     root_path: Optional[Path] = None
 
     # Organization settings

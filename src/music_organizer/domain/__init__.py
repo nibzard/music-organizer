@@ -65,6 +65,27 @@ from .classification import (
     ContentAnalysisService,
 )
 
+# Result pattern for error handling
+from .result import (
+    Result,
+    Success,
+    Failure,
+    success,
+    failure,
+    as_result,
+    as_result_async,
+    collect,
+    partition,
+    try_catch,
+    ResultBuilder,
+    DomainError,
+    ValidationError,
+    NotFoundError,
+    DuplicateError,
+    OrganizationError,
+    MetadataError,
+)
+
 # Unified exports
 __all__ = [
     # Legacy entities (deprecated, use bounded context versions)
@@ -112,6 +133,24 @@ __all__ = [
     "ClassificationService",
     "DuplicateService",
     "ContentAnalysisService",
+    # Result pattern
+    "Result",
+    "Success",
+    "Failure",
+    "success",
+    "failure",
+    "as_result",
+    "as_result_async",
+    "collect",
+    "partition",
+    "try_catch",
+    "ResultBuilder",
+    "DomainError",
+    "ValidationError",
+    "NotFoundError",
+    "DuplicateError",
+    "OrganizationError",
+    "MetadataError",
 ]
 
 # Context markers for type checking
