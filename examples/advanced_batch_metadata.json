@@ -1,0 +1,166 @@
+{
+  "description": "Advanced batch metadata operations with conditions and transformations",
+  "operations": [
+    {
+      "name": "Remove Duplicate Artists",
+      "field": "artists",
+      "operation": "transform",
+      "pattern": "s/,$//g|s/,,+/,/g",
+      "condition": {
+        "artists": {
+          "regex": ","
+        }
+      },
+      "conflict_strategy": "replace"
+    },
+    {
+      "name": "Standardize Artist Names - The",
+      "field": "artists",
+      "operation": "transform",
+      "pattern": "s/^the\\s+(.+)/The $1/g|s/^(.+),\\s+the$/$1, The/g",
+      "condition": {
+        "artists": {
+          "regex": "(?i)^the\\s+|,\\s+the$"
+        }
+      },
+      "conflict_strategy": "replace"
+    },
+    {
+      "name": "Fix Common Genre Typos",
+      "field": "genre",
+      "operation": "transform",
+      "pattern": "s/rok$/Rock/g|s/p0p$/Pop/g|s/jazzz$/Jazz/g|s/clasical$/Classical/g|s/electrnk$/Electronic/g",
+      "condition": {},
+      "conflict_strategy": "replace"
+    },
+    {
+      "name": "Extract Year from Album",
+      "field": "year",
+      "operation": "transform",
+      "pattern": "s/.*\\((19|20)\\d{2}\\).*/$1/g",
+      "condition": {
+        "album": {
+          "regex": "\\((19|20)\\d{2}\\)"
+        },
+        "year": null
+      },
+      "conflict_strategy": "replace"
+    },
+    {
+      "name": "Add Disco to Genre",
+      "field": "genre",
+      "operation": "add",
+      "value": "Disco",
+      "condition": {
+        "year": {
+          "equals": 1978
+        }
+      },
+      "conflict_strategy": "merge"
+    },
+    {
+      "name": "Set Genre Based on Artist",
+      "field": "genre",
+      "operation": "set",
+      "value": "Classical",
+      "condition": {
+        "artists": {
+          "regex": "(?i)(bach|beethoven|mozart|chopin|vivaldi)"
+        }
+      },
+      "conflict_strategy": "skip"
+    },
+    {
+      "name": "Set Genre Based on Artist 2",
+      "field": "genre",
+      "operation": "set",
+      "value": "Jazz",
+      "condition": {
+        "artists": {
+          "regex": "(?i)(davis|coltrane|monk|miles|ellington)"
+        }
+      },
+      "conflict_strategy": "skip"
+    },
+    {
+      "name": "Clean Album Names",
+      "field": "album",
+      "operation": "transform",
+      "pattern": "s/\\s+-\\s+Single$//g|s/\\s*\\[Explicit\\]//g|s/\\s*\\(Clean\\)//g|s/\\s*\\(Deluxe\\)/ (Deluxe Edition)/g|s/\\s*\\(Expanded\\)/ (Expanded Edition)/g",
+      "condition": {},
+      "conflict_strategy": "replace"
+    },
+    {
+      "name": "Normalize Disc Numbers",
+      "field": "disc_number",
+      "operation": "set",
+      "value": 1,
+      "condition": {
+        "disc_number": null,
+        "total_discs": {
+          "equals": 1
+        }
+      },
+      "conflict_strategy": "replace"
+    },
+    {
+      "name": "Add Composer for Classical",
+      "field": "composer",
+      "operation": "copy",
+      "value": "artists",
+      "condition": {
+        "genre": "Classical",
+        "composer": null
+      },
+      "conflict_strategy": "skip"
+    },
+    {
+      "name": "Fix Total Discs",
+      "field": "total_discs",
+      "operation": "set",
+      "value": 1,
+      "condition": {
+        "total_discs": null,
+        "disc_number": 1
+      },
+      "conflict_strategy": "replace"
+    },
+    {
+      "name": "Normalize Track Numbers with Total",
+      "field": "track_number",
+      "operation": "transform",
+      "pattern": "s/^(\\d+)\\s*\\/\\s*(\\d+)$/$1/g",
+      "condition": {
+        "track_number": {
+          "regex": "^\\d+\\s*/\\s*\\d+$"
+        }
+      },
+      "conflict_strategy": "replace"
+    },
+    {
+      "name": "Extract Total Tracks",
+      "field": "total_tracks",
+      "operation": "transform",
+      "pattern": "s/^(\\d+)\\s*\\/\\s*(\\d+)$/$2/g",
+      "condition": {
+        "track_number": {
+          "regex": "^\\d+\\s*/\\s*\\d+$"
+        },
+        "total_tracks": null
+      },
+      "conflict_strategy": "replace"
+    },
+    {
+      "name": "Fix Bitrate Format",
+      "field": "bitrate",
+      "operation": "transform",
+      "pattern": "s/^(\d+)kbps$/$1/g|s/^(\d+)\\s*kb\\/$1/g|s/^(\d+)\\s*k$/$1/g",
+      "condition": {
+        "bitrate": {
+          "regex": "(?i)kbps|kb/"
+        }
+      },
+      "conflict_strategy": "replace"
+    }
+  ]
+}

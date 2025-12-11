@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any, Iterator
 from concurrent.futures import ThreadPoolExecutor
 
-from ..domain.catalog import AudioPath, FileFormat
+from ...domain.catalog import AudioPath, FileFormat
 
 
 class FilesystemAdapter:

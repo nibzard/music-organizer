@@ -8,8 +8,8 @@ protecting the domain from external model dependencies.
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 
-from ..domain.catalog import Recording as DomainRecording, Metadata as DomainMetadata, ArtistName, TrackNumber, AudioPath
-from ..domain.organization import TargetPath, OrganizationPattern
+from ...domain.catalog import Recording as DomainRecording, Metadata as DomainMetadata, ArtistName, TrackNumber, AudioPath
+from ...domain.organization import TargetPath, OrganizationPattern
 
 
 class AudioFileToRecordingAdapter:

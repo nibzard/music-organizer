@@ -8,9 +8,9 @@ from pathlib import Path
 from collections import defaultdict
 import math
 
-from src.music_organizer.plugins.base import ClassificationPlugin, PluginInfo
-from src.music_organizer.plugins.config import PluginConfigSchema, ConfigOption, create_classification_plugin_schema
-from src.music_organizer.models.audio_file import AudioFile
+from ..base import ClassificationPlugin, PluginInfo
+from ..config import PluginConfigSchema, ConfigOption, create_classification_plugin_schema
+from ...models.audio_file import AudioFile
 
 
 class DuplicateDetectorPlugin(ClassificationPlugin):

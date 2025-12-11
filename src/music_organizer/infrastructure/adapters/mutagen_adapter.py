@@ -16,7 +16,7 @@ try:
 except ImportError:
     MUTAGEN_AVAILABLE = False
 
-from ..domain.catalog import Metadata, ArtistName, TrackNumber, AudioPath, FileFormat
+from ...domain.catalog import Metadata, ArtistName, TrackNumber, AudioPath, FileFormat
 
 
 class MutagenMetadataAdapter:

@@ -1,0 +1,87 @@
+{
+  "description": "Example batch metadata operations configuration",
+  "operations": [
+    {
+      "name": "Standardize Genres",
+      "field": "genre",
+      "operation": "transform",
+      "pattern": "s/^rock$/Rock/g|s/^pop$/Pop/g|s/^jazz$/Jazz/g|s/^classical$/Classical/g|s/^electronic$/Electronic/g|s/^hip-hop$/Hip-Hop/g|s/^r&b$/R&B/g|s/^country$/Country/g",
+      "condition": {},
+      "conflict_strategy": "replace"
+    },
+    {
+      "name": "Fix Track Numbers",
+      "field": "track_number",
+      "operation": "transform",
+      "pattern": "s/^0*(\\d+)$/$1/g",
+      "condition": {
+        "track_number": {
+          "regex": "^0\\d+$"
+        }
+      },
+      "conflict_strategy": "replace"
+    },
+    {
+      "name": "Add Album Artist",
+      "field": "albumartist",
+      "operation": "copy",
+      "value": "artists",
+      "condition": {
+        "albumartist": null
+      },
+      "conflict_strategy": "skip"
+    },
+    {
+      "name": "Remove Featuring from Title",
+      "field": "title",
+      "operation": "transform",
+      "pattern": "s/\\s*\\(feat\\..*?\\)//g|s/\\s*\\[feat\\..*?\\]//g|s/\\s*ft\\..*?$//g",
+      "condition": {
+        "title": {
+          "regex": "(feat|ft\\.)"
+        }
+      },
+      "conflict_strategy": "replace"
+    },
+    {
+      "name": "Capitalize Title and Album",
+      "field": "title",
+      "operation": "transform",
+      "pattern": "s/\\b(\\w)/\\U$1/g",
+      "condition": {},
+      "conflict_strategy": "replace"
+    },
+    {
+      "name": "Capitalize Album Names",
+      "field": "album",
+      "operation": "transform",
+      "pattern": "s/\\b(\\w)/\\U$1/g",
+      "condition": {},
+      "conflict_strategy": "replace"
+    },
+    {
+      "name": "Set Year for Live Albums",
+      "field": "year",
+      "operation": "set",
+      "value": 2023,
+      "condition": {
+        "album": {
+          "regex": "(?i)live|concert|tour"
+        }
+      },
+      "conflict_strategy": "skip"
+    },
+    {
+      "name": "Add Genre for Classical",
+      "field": "genre",
+      "operation": "set",
+      "value": "Classical",
+      "condition": {
+        "artists": {
+          "contains": "Symphony"
+        }
+      },
+      "conflict_strategy": "skip"
+    }
+  ]
+}

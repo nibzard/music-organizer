@@ -2,8 +2,8 @@
 
 from pathlib import Path
 from typing import Dict, Any, List
-from src.music_organizer.plugins.base import OutputPlugin, PluginInfo
-from src.music_organizer.models.audio_file import AudioFile
+from ..base import OutputPlugin, PluginInfo
+from ...models.audio_file import AudioFile
 
 
 class M3UExporterPlugin(OutputPlugin):

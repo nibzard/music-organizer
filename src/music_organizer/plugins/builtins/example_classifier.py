@@ -1,9 +1,9 @@
 """Example classification plugin."""
 
 from typing import Dict, Any, List
-from src.music_organizer.plugins.base import ClassificationPlugin, PluginInfo
-from src.music_organizer.plugins.config import PluginConfigSchema, ConfigOption
-from src.music_organizer.models.audio_file import AudioFile
+from ..base import ClassificationPlugin, PluginInfo
+from ..config import PluginConfigSchema, ConfigOption
+from ...models.audio_file import AudioFile
 
 
 class ExampleClassifierPlugin(ClassificationPlugin):
