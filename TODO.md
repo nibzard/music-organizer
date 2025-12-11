@@ -617,7 +617,9 @@ music-batch-metadata /music/library --workers 8 --batch-size 200
 
 ### Testing & Quality
 - [x] ✅ Fixed test imports and basic test failures (current coverage: 16%)
-- [ ] 🔴 Complete test suite to achieve 95% coverage (requires significant work - many modules at 0% coverage)
+- [x] ✅ Added tests for rich_progress_renderer module (0% → 94% coverage)
+- [x] ✅ Added tests for memory_monitor module (0% → 78% coverage)
+- [ ] 🔴 Complete test suite to achieve 95% coverage (requires significant work - many modules still at 0% coverage)
 - [ ] 🟡 Add property-based testing for edge cases
 - [ ] 🟡 Implement performance benchmarks in CI/CD
 - [ ] 🟢 Add security audit for file operations
