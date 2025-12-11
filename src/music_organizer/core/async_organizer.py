@@ -17,6 +17,9 @@ from .async_mover import AsyncFileMover, AsyncDirectoryOrganizer
 from .incremental_scanner import IncrementalScanner
 from .parallel_metadata import ParallelMetadataExtractor, ExtractionResult
 from ..progress_tracker import IntelligentProgressTracker, ProgressStage
+from .bulk_operations import BulkMoveOperator, BulkOperationConfig, ConflictStrategy
+from .bulk_organizer import BulkAsyncOrganizer
+from .bulk_progress_tracker import BulkProgressTracker
 
 logger = logging.getLogger(__name__)
 
@@ -677,6 +680,85 @@ class AsyncMusicOrganizer:
             The progress tracker used by this organizer
         """
         return self.progress_tracker
+
+    async def organize_files_bulk(self,
+                                  directory: Path,
+                                  bulk_config: Optional[BulkOperationConfig] = None,
+                                  incremental: bool = False,
+                                  progress_callback=None) -> Dict[str, Any]:
+        """Organize files using bulk operations for maximum performance.
+
+        This method provides an alternative to the standard organize_files method,
+        using bulk file operations for improved throughput on large libraries.
+
+        Args:
+            directory: Source directory containing music files
+            bulk_config: Configuration for bulk operations (optional)
+            incremental: Use incremental scanning (default: False)
+            progress_callback: Optional progress callback
+
+        Returns:
+            Dictionary with organization results and bulk statistics
+        """
+        if bulk_config is None:
+            bulk_config = BulkOperationConfig(
+                max_workers=self.max_workers,
+                chunk_size=200,  # Larger chunks for bulk operations
+                conflict_strategy=ConflictStrategy.RENAME,
+                create_dirs_batch=True,
+                preserve_timestamps=True
+            )
+
+        # Create bulk organizer
+        bulk_organizer = BulkAsyncOrganizer(
+            config=self.config,
+            bulk_config=bulk_config,
+            dry_run=self.dry_run
+        )
+
+        try:
+            # Execute bulk organization
+            results = await bulk_organizer.organize_bulk(
+                source_dir=directory,
+                target_dir=self.config.target_directory,
+                incremental=incremental,
+                progress_callback=progress_callback
+            )
+
+            return results
+
+        finally:
+            # Cleanup resources
+            await bulk_organizer.cleanup()
+
+    async def get_bulk_operation_preview(self,
+                                        directory: Path) -> Dict[str, Any]:
+        """Get a preview of bulk organization before execution.
+
+        Args:
+            directory: Source directory to analyze
+
+        Returns:
+            Preview information including estimated duration and file counts
+        """
+        bulk_config = BulkOperationConfig(
+            max_workers=self.max_workers,
+            conflict_strategy=ConflictStrategy.RENAME
+        )
+
+        bulk_organizer = BulkAsyncOrganizer(
+            config=self.config,
+            bulk_config=bulk_config,
+            dry_run=True
+        )
+
+        try:
+            return await bulk_organizer.get_organization_preview(
+                source_dir=directory,
+                target_dir=self.config.target_directory
+            )
+        finally:
+            await bulk_organizer.cleanup()
 
     async def cleanup(self):
         """Clean up resources including parallel extractor."""

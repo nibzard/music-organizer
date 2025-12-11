@@ -9,6 +9,9 @@ from datetime import datetime
 from .core.async_organizer import AsyncMusicOrganizer, organize_files_async
 from .core.metadata import MetadataHandler
 from .core.classifier import ContentClassifier
+from .core.bulk_operations import BulkOperationConfig, ConflictStrategy
+from .core.bulk_organizer import BulkAsyncOrganizer
+from .core.bulk_progress_tracker import BulkProgressTracker
 from .models.config import Config, load_config
 from .exceptions import MusicOrganizerError
 from .progress_tracker import IntelligentProgressTracker, ProgressStage
@@ -121,7 +124,14 @@ class AsyncMusicCLI:
                       use_cache: bool = True,
                       cache_ttl: Optional[int] = None,
                       incremental: bool = False,
-                      force_full_scan: bool = False) -> int:
+                      force_full_scan: bool = False,
+                      bulk_mode: bool = False,
+                      chunk_size: int = 200,
+                      conflict_strategy: str = 'rename',
+                      verify_copies: bool = False,
+                      batch_dirs: bool = True,
+                      preview_bulk: bool = False,
+                      bulk_memory_threshold: int = 512) -> int:
         """Organize music files asynchronously."""
         try:
             # Load configuration
@@ -209,6 +219,37 @@ class AsyncMusicCLI:
                 scan_type = "new/modified" if incremental and not force_full_scan else "audio"
                 self.console.print(f"Found {file_count} {scan_type} files")
 
+                # Show bulk mode information if enabled
+                if bulk_mode:
+                    self.console.print(f"\n⚡ Bulk Operations: ENABLED")
+                    self.console.print(f"  Chunk size: {chunk_size}")
+                    self.console.print(f"  Conflict strategy: {conflict_strategy}")
+                    self.console.print(f"  Verify copies: {verify_copies}")
+                    self.console.print(f"  Batch directories: {batch_dirs}")
+                    self.console.print(f"  Memory threshold: {bulk_memory_threshold}MB")
+
+                # Preview mode for bulk operations
+                if bulk_mode and preview_bulk:
+                    self.console.print("\n🔮 Preview Mode - Analyzing bulk operation...")
+                    preview = await organizer.get_bulk_operation_preview(source)
+
+                    self.console.print("\n📋 Bulk Operation Preview:")
+                    self.console.print(f"  Source files: {preview.get('source_files', 0)}")
+                    self.console.print(f"  Estimated size: {preview.get('estimated_size_mb', 0):.1f} MB")
+                    self.console.print(f"  Estimated duration: {preview.get('estimated_duration', 0):.1f} seconds")
+
+                    content_dist = preview.get('content_distribution', {})
+                    if content_dist:
+                        self.console.print("\n📂 Content distribution:")
+                        for content_type, count in content_dist.items():
+                            self.console.print(f"  {content_type}: {count}")
+
+                    if not dry_run:
+                        confirm = input("\nContinue with bulk operation? (y/N): ")
+                        if confirm.lower() != 'y':
+                            self.console.print("Operation cancelled by user.", 'yellow')
+                            return 0
+
                 # Initialize intelligent progress tracker
                 progress_tracker = IntelligentProgressTracker()
                 progress_renderer = AsyncProgressRenderer()
@@ -218,7 +259,7 @@ class AsyncMusicCLI:
                 # Start scanning stage
                 progress_tracker.start_stage(ProgressStage.SCANNING)
 
-                # Process files in streaming mode for memory efficiency
+                # Process files using bulk or standard mode
                 results = {
                     'processed': 0,
                     'moved': 0,
@@ -237,8 +278,69 @@ class AsyncMusicCLI:
                 # Switch to processing stage
                 progress_tracker.finish_stage(ProgressStage.SCANNING)
 
-                # Use parallel organization if enabled and available
-                if enable_parallel_extraction and incremental and not force_full_scan:
+                # Use bulk operations if enabled
+                if bulk_mode:
+                    # Create bulk operation configuration
+                    from .core.bulk_progress_tracker import BulkProgressTracker
+                    bulk_tracker = BulkProgressTracker(
+                        update_interval=0.5,
+                        batch_size=chunk_size
+                    )
+
+                    # Create bulk config
+                    conflict_enum = ConflictStrategy(conflict_strategy)
+                    bulk_config = BulkOperationConfig(
+                        max_workers=max_workers,
+                        chunk_size=chunk_size,
+                        conflict_strategy=conflict_enum,
+                        verify_copies=verify_copies,
+                        create_dirs_batch=batch_dirs,
+                        preserve_timestamps=True,
+                        skip_identical=True,
+                        memory_threshold_mb=bulk_memory_threshold
+                    )
+
+                    # Start bulk operation progress tracking
+                    bulk_tracker.start_bulk_operation(file_count, estimated_batches=(file_count + chunk_size - 1) // chunk_size)
+
+                    # Progress callback for bulk operations
+                    async def bulk_progress(current, total, stage="Processing"):
+                        bulk_tracker.update_batch_progress(current, total)
+                        progress_tracker.set_completed(current)
+
+                    # Execute bulk organization
+                    self.console.print("\n⚡ Executing bulk organization...")
+                    progress_tracker.start_stage(ProgressStage.MOVING, total=file_count)
+
+                    results = await organizer.organize_files_bulk(
+                        directory=source,
+                        bulk_config=bulk_config,
+                        incremental=incremental and not force_full_scan,
+                        progress_callback=bulk_progress
+                    )
+
+                    progress_tracker.finish_stage(ProgressStage.MOVING)
+
+                    # Get bulk performance report
+                    bulk_summary = bulk_tracker.get_bulk_summary()
+                    performance_report = bulk_tracker.get_performance_report()
+
+                    # Show bulk statistics
+                    if 'bulk_stats' in results:
+                        stats = results['bulk_stats']
+                        self.console.print("\n⚡ Bulk Operation Statistics:")
+                        self.console.print(f"  Success rate: {stats.get('success_rate', 0):.1f}%")
+                        self.console.print(f"  Throughput: {stats.get('throughput_mb_per_sec', 0):.1f} MB/s")
+                        self.console.print(f"  Total size: {stats.get('total_size_mb', 0):.1f} MB")
+                        self.console.print(f"  Conflicts resolved: {stats.get('conflicts_resolved', 0)}")
+
+                    # Update results for display
+                    results['processed'] = results.get('processed', file_count)
+                    results['moved'] = results.get('moved', 0)
+                    results['skipped'] = results.get('skipped', 0)
+                    results['errors'] = results.get('errors', [])
+
+                elif enable_parallel_extraction and incremental and not force_full_scan:
                     # Use the new parallel incremental organization
                     progress_tracker.start_stage(ProgressStage.PARALLEL_EXTRACTION, total=file_count)
 
@@ -572,6 +674,18 @@ def create_async_cli():
     org_parser.add_argument('--cache-ttl', type=int, help='Cache TTL in days (default: 30)')
     org_parser.add_argument('--incremental', action='store_true', help='Only process new or modified files (incremental scan)')
     org_parser.add_argument('--force-full-scan', action='store_true', help='Force full scan instead of incremental')
+
+    # Bulk operation arguments
+    bulk_group = org_parser.add_argument_group('Bulk Operations', 'Advanced bulk file operation settings')
+    bulk_group.add_argument('--bulk', action='store_true', help='Use bulk operations for maximum performance')
+    bulk_group.add_argument('--chunk-size', type=int, default=200, help='Batch size for bulk operations (default: 200)')
+    bulk_group.add_argument('--conflict-strategy', choices=['skip', 'rename', 'replace', 'keep_both'],
+                           default='rename', help='Strategy for handling file conflicts (default: rename)')
+    bulk_group.add_argument('--verify-copies', action='store_true', help='Verify file copies for bulk operations (default: disabled for moves)')
+    bulk_group.add_argument('--no-batch-dirs', action='store_true', help='Disable batch directory creation')
+    bulk_group.add_argument('--preview-bulk', action='store_true', help='Preview bulk operation before execution')
+    bulk_group.add_argument('--bulk-memory-threshold', type=int, default=512, help='Memory threshold for bulk operations in MB (default: 512)')
+
     org_parser.add_argument('--debug', action='store_true', help='Enable debug output')
 
     # Scan command
@@ -624,7 +738,14 @@ def create_async_cli():
             use_cache=not args.no_cache,
             cache_ttl=args.cache_ttl,
             incremental=args.incremental,
-            force_full_scan=args.force_full_scan
+            force_full_scan=args.force_full_scan,
+            bulk_mode=args.bulk,
+            chunk_size=args.chunk_size,
+            conflict_strategy=args.conflict_strategy,
+            verify_copies=args.verify_copies,
+            batch_dirs=not args.no_batch_dirs,
+            preview_bulk=args.preview_bulk,
+            bulk_memory_threshold=args.bulk_memory_threshold
         ))
     elif args.command == 'scan':
         return asyncio.run(cli.scan(
