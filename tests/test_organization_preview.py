@@ -13,7 +13,8 @@ from music_organizer.core.organization_preview import (
     OrganizationPreview, PreviewOperation, DirectoryPreview,
     PreviewStatistics, InteractivePreview
 )
-from music_organizer.models.audio_file import AudioFile, ContentType, FileFormat
+from music_organizer.models.audio_file import AudioFile, ContentType
+from music_organizer.domain.value_objects import FileFormat
 from music_organizer.models.config import Config
 from music_organizer.domain.value_objects import ArtistName, Metadata
 

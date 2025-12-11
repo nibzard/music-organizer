@@ -14,7 +14,7 @@ from music_organizer.models.audio_file import AudioFile
 from music_organizer.models.config import Config
 from music_organizer.core.metadata import MetadataHandler
 from music_organizer.core.cache import SQLiteCache
-from music_organizer.core.async_organizer import AsyncOrganizer
+from music_organizer.core.async_organizer import AsyncMusicOrganizer as AsyncOrganizer
 from music_organizer.core.cached_metadata import CachedMetadataHandler
 from music_organizer.utils.memory_monitor import MemoryProfiler, profile_memory
 

@@ -5,6 +5,7 @@ import shutil
 import json
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, AsyncGenerator
 from datetime import datetime
@@ -410,15 +411,14 @@ class AsyncDirectoryOrganizer:
             "Rarities"
         ]
 
-        async with ThreadPoolExecutor() as executor:
+        with ThreadPoolExecutor() as executor:
+            loop = asyncio.get_event_loop()
             tasks = []
             for dir_name in directories:
                 dir_path = base_path / dir_name
-                task = asyncio.get_event_loop().run_in_executor(
+                task = loop.run_in_executor(
                     executor,
-                    dir_path.mkdir,
-                    parents=True,
-                    exist_ok=True
+                    partial(dir_path.mkdir, parents=True, exist_ok=True)
                 )
                 tasks.append(task)
 

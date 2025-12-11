@@ -17,7 +17,8 @@ from music_organizer.core.magic_mode import (
     create_magic_organization_config
 )
 from music_organizer.core.magic_organizer import MagicMusicOrganizer
-from music_organizer.models.audio_file import AudioFile, ContentType, FileFormat
+from music_organizer.models.audio_file import AudioFile, ContentType
+from music_organizer.domain.value_objects import FileFormat
 from music_organizer.models.config import Config
 from music_organizer.exceptions import MagicModeError
 from music_organizer.domain.value_objects import ArtistName, Metadata

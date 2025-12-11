@@ -11,7 +11,7 @@ from pathlib import Path
 from .event_bus import DomainEvent
 
 
-@dataclass
+@dataclass(kw_only=True)
 class RecordingAdded(DomainEvent):
     """Event fired when a recording is added to the catalog."""
     recording_id: str
@@ -32,7 +32,7 @@ class RecordingAdded(DomainEvent):
         }
 
 
-@dataclass
+@dataclass(kw_only=True)
 class RecordingModified(DomainEvent):
     """Event fired when a recording's metadata is modified."""
     recording_id: str
@@ -51,7 +51,7 @@ class RecordingModified(DomainEvent):
         }
 
 
-@dataclass
+@dataclass(kw_only=True)
 class RecordingDeleted(DomainEvent):
     """Event fired when a recording is deleted from the catalog."""
     recording_id: str
@@ -70,7 +70,7 @@ class RecordingDeleted(DomainEvent):
         }
 
 
-@dataclass
+@dataclass(kw_only=True)
 class DuplicateDetected(DomainEvent):
     """Event fired when duplicate recordings are detected."""
     duplicate_group_id: str
@@ -89,7 +89,7 @@ class DuplicateDetected(DomainEvent):
         }
 
 
-@dataclass
+@dataclass(kw_only=True)
 class DuplicateResolved(DomainEvent):
     """Event fired when duplicate recordings are resolved."""
     duplicate_group_id: str
@@ -106,7 +106,7 @@ class DuplicateResolved(DomainEvent):
         }
 
 
-@dataclass
+@dataclass(kw_only=True)
 class ClassificationCompleted(DomainEvent):
     """Event fired when a recording is classified."""
     recording_id: str
@@ -125,7 +125,7 @@ class ClassificationCompleted(DomainEvent):
         }
 
 
-@dataclass
+@dataclass(kw_only=True)
 class OrganizationCompleted(DomainEvent):
     """Event fired when file organization is completed."""
     source_directory: str
@@ -148,7 +148,7 @@ class OrganizationCompleted(DomainEvent):
         }
 
 
-@dataclass
+@dataclass(kw_only=True)
 class FileMoved(DomainEvent):
     """Event fired when a file is moved during organization."""
     recording_id: str
@@ -167,7 +167,7 @@ class FileMoved(DomainEvent):
         }
 
 
-@dataclass
+@dataclass(kw_only=True)
 class MetadataEnhanced(DomainEvent):
     """Event fired when metadata is enhanced from external sources."""
     recording_id: str
@@ -188,7 +188,7 @@ class MetadataEnhanced(DomainEvent):
         }
 
 
-@dataclass
+@dataclass(kw_only=True)
 class LibraryScanned(DomainEvent):
     """Event fired when a library scan is completed."""
     source_directory: str
@@ -209,7 +209,7 @@ class LibraryScanned(DomainEvent):
         }
 
 
-@dataclass
+@dataclass(kw_only=True)
 class PluginExecuted(DomainEvent):
     """Event fired when a plugin is executed."""
     plugin_name: str
@@ -230,7 +230,7 @@ class PluginExecuted(DomainEvent):
         }
 
 
-@dataclass
+@dataclass(kw_only=True)
 class UserCorrectionApplied(DomainEvent):
     """Event fired when a user corrects an automatic classification or organization."""
     recording_id: str
@@ -249,7 +249,7 @@ class UserCorrectionApplied(DomainEvent):
         }
 
 
-@dataclass
+@dataclass(kw_only=True)
 class PerformanceWarning(DomainEvent):
     """Event fired when a performance issue is detected."""
     operation: str

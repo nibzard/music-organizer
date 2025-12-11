@@ -13,7 +13,7 @@ from music_organizer.core.bulk_progress_tracker import (
     BatchMetrics,
     ConflictMetrics
 )
-from music_organizer.core.bulk_operations import BatchMetrics as BulkBatchMetrics
+# No BatchMetrics in bulk_operations - removed import
 
 
 class TestBatchMetrics:
