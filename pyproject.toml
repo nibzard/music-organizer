@@ -41,6 +41,12 @@ dependencies = [
     "psutil>=5.9.0",
 ]
 
+[project.optional-dependencies]
+ml = [
+    "scikit-learn>=1.3.0",
+    "musicbrainzngs>=0.7",
+]
+
 [project.urls]
 Homepage = "https://github.com/nibzard/music-organizer"
 Documentation = "https://github.com/nibzard/music-organizer#readme"

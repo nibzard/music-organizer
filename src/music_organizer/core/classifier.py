@@ -7,6 +7,22 @@ from pathlib import Path
 from ..models.audio_file import AudioFile, ContentType
 from ..exceptions import ClassificationError
 
+# ML-based genre classification (optional, lazy import)
+_genre_classifier = None
+
+
+def _get_genre_classifier():
+    """Lazy-load the ML genre classifier."""
+    global _genre_classifier
+    if _genre_classifier is None:
+        try:
+            from ..ml.genre_classifier import GenreClassifier
+            _genre_classifier = GenreClassifier()
+        except Exception:
+            # ML not available, will use rule-based fallback
+            _genre_classifier = False
+    return _genre_classifier if _genre_classifier is not False else None
+
 
 class ContentClassifier:
     """Classify audio content type based on metadata and patterns."""
@@ -471,3 +487,78 @@ class ContentClassifier:
         """Check if file has rarity indicators."""
         text = f"{audio_file.album or ''} {audio_file.title or ''}".lower()
         return any(re.search(p, text, flags=re.IGNORECASE) for p in cls.RARITY_PATTERNS)
+
+    @classmethod
+    def classify_genre(cls, audio_file: AudioFile) -> Tuple[List[str], float]:
+        """Classify genre(s) for an audio file using ML or rule-based approach.
+
+        Returns:
+            Tuple of (list of genres, confidence_score)
+        """
+        ml_classifier = _get_genre_classifier()
+
+        if ml_classifier is not None:
+            try:
+                result = ml_classifier.predict(
+                    title=audio_file.title,
+                    album=audio_file.album,
+                    artist=audio_file.primary_artist,
+                    year=audio_file.year,
+                    existing_genre=audio_file.genre,
+                )
+                return result.genres, result.confidence
+            except Exception:
+                # Fall through to rule-based if ML fails
+                pass
+
+        # Rule-based fallback
+        return cls._classify_genre_rule_based(audio_file)
+
+    @classmethod
+    def _classify_genre_rule_based(cls, audio_file: AudioFile) -> Tuple[List[str], float]:
+        """Rule-based genre classification as fallback."""
+        genres = set()
+
+        # Use existing genre if valid
+        if audio_file.genre:
+            from ..ml.genre_classifier import _normalize_genre
+            normalized = _normalize_genre(audio_file.genre)
+            if normalized:
+                genres.add(normalized)
+
+        # Infer from text patterns
+        text = " ".join(filter(None, [
+            audio_file.title,
+            audio_file.album,
+            audio_file.primary_artist,
+        ])).lower()
+
+        # Genre patterns
+        genre_patterns = {
+            "electronic": [r"remix", r"dj", r"club", r"techno", r"house", r"trance", r"edm"],
+            "rock": [r"rock", r"metal", r"punk", r"grunge", r"alternative"],
+            "hiphop": [r"hip", r"hop", r"rap", r"trap"],
+            "jazz": [r"jazz", r"swing", r"fusion"],
+            "classical": [r"classical", r"symphony", r"orchestra", r"concerto"],
+            "country": [r"country", r"folk", r"bluegrass"],
+            "reggae": [r"reggae", r"dancehall"],
+            "blues": [r"blues"],
+            "ambient": [r"ambient", r"chillout", r"downtempo"],
+            "soundtrack": [r"soundtrack", r"ost", r"score"],
+        }
+
+        for genre, patterns in genre_patterns.items():
+            if any(re.search(rf"\b{p}\b", text) for p in patterns):
+                genres.add(genre)
+
+        # Calculate confidence based on number of matches
+        if len(genres) == 1 and audio_file.genre:
+            confidence = 0.8
+        elif len(genres) == 1:
+            confidence = 0.6
+        elif len(genres) > 1:
+            confidence = 0.5
+        else:
+            confidence = 0.0
+
+        return sorted(genres), confidence
