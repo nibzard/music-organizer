@@ -9,6 +9,7 @@ from ..exceptions import ClassificationError
 
 # ML-based genre classification (optional, lazy import)
 _genre_classifier = None
+_content_type_classifier = None
 
 
 def _get_genre_classifier():
@@ -22,6 +23,19 @@ def _get_genre_classifier():
             # ML not available, will use rule-based fallback
             _genre_classifier = False
     return _genre_classifier if _genre_classifier is not False else None
+
+
+def _get_content_type_classifier():
+    """Lazy-load the ML content type classifier."""
+    global _content_type_classifier
+    if _content_type_classifier is None:
+        try:
+            from ..ml.content_classifier import ContentTypeClassifier
+            _content_type_classifier = ContentTypeClassifier()
+        except Exception:
+            # ML not available, will use rule-based fallback
+            _content_type_classifier = False
+    return _content_type_classifier if _content_type_classifier is not False else None
 
 
 class ContentClassifier:
@@ -562,3 +576,120 @@ class ContentClassifier:
             confidence = 0.0
 
         return sorted(genres), confidence
+
+    @classmethod
+    def classify_extended_content_type(cls, audio_file: AudioFile) -> Tuple[Optional[str], float]:
+        """Classify extended content types: REMIX, PODCAST, SPOKEN_WORD, SOUNDTRACK.
+
+        Returns:
+            Tuple of (content_type_string or None, confidence_score)
+            Returns None if no extended type is detected.
+        """
+        ml_classifier = _get_content_type_classifier()
+
+        if ml_classifier is not None:
+            try:
+                # Get duration from metadata if available
+                duration = None
+                if audio_file.metadata:
+                    duration = audio_file.metadata.get("duration")
+                    if duration is not None:
+                        try:
+                            duration = float(duration)
+                        except (ValueError, TypeError):
+                            duration = None
+
+                result = ml_classifier.predict(
+                    title=audio_file.title,
+                    album=audio_file.album,
+                    artist=audio_file.primary_artist,
+                    genre=audio_file.genre,
+                    year=audio_file.year,
+                    duration=duration,
+                )
+                if result.primary_type and result.confidence > 0.5:
+                    return result.primary_type.value, result.confidence
+            except Exception:
+                # Fall through to rule-based
+                pass
+
+        # Rule-based fallback
+        return cls._classify_extended_rule_based(audio_file)
+
+    @classmethod
+    def _classify_extended_rule_based(cls, audio_file: AudioFile) -> Tuple[Optional[str], float]:
+        """Rule-based extended content type classification."""
+        title_lower = (audio_file.title or "").lower()
+        album_lower = (audio_file.album or "").lower()
+        artist_lower = (audio_file.primary_artist or "").lower()
+        genre_lower = (audio_file.genre or "").lower()
+        # AudioFile doesn't have duration field, get from metadata if available
+        duration = audio_file.metadata.get("duration") if audio_file.metadata else None
+        if duration is not None:
+            try:
+                duration = float(duration)
+            except (ValueError, TypeError):
+                duration = None
+
+        # REMIX detection
+        remix_patterns = [r"remix", r"mix", r"edit", r"version", r"bootleg", r"mashup", r"flip", r"refix", r"rework"]
+        remix_score = 0.0
+        for pattern in remix_patterns:
+            if re.search(rf"\b{pattern}\b", title_lower):
+                remix_score += 0.3
+            if re.search(rf"\b{pattern}\b", album_lower):
+                remix_score += 0.2
+        if re.search(r"\bdj\s", artist_lower):
+            remix_score += 0.2
+        if "electronic" in genre_lower or "edm" in genre_lower:
+            remix_score += 0.1
+        if remix_score >= 0.5:
+            return "remix", min(remix_score, 1.0)
+
+        # PODCAST detection
+        podcast_patterns = [r"podcast", r"episode", r"ep\.\s*\d+", r"pt\.\s*\d+", r"feat\.", r"interview", r"season\s+\d+"]
+        podcast_score = 0.0
+        for pattern in podcast_patterns:
+            if re.search(pattern, title_lower):
+                podcast_score += 0.25
+        if "podcast" in album_lower:
+            podcast_score += 0.3
+        if "podcast" in genre_lower:
+            podcast_score += 0.4
+        if duration and duration > 900:  # 15+ minutes
+            podcast_score += 0.2
+        if podcast_score >= 0.5:
+            return "podcast", min(podcast_score, 1.0)
+
+        # SPOKEN_WORD detection
+        spoken_patterns = [r"spoken\s*word", r"audiobook", r"book\s*\d+", r"chapter\s*\d+", r"narrat", r"speech", r"lecture", r"standup?", r"comedy"]
+        spoken_score = 0.0
+        for pattern in spoken_patterns:
+            if re.search(pattern, title_lower):
+                spoken_score += 0.3
+            if re.search(pattern, album_lower):
+                spoken_score += 0.3
+        spoken_genres = ["speech", "spoken", "audiobook", "comedy", "lecture"]
+        if any(g in genre_lower for g in spoken_genres):
+            spoken_score += 0.4
+        if "author" in artist_lower or "narrator" in artist_lower:
+            spoken_score += 0.2
+        if spoken_score >= 0.5:
+            return "spoken_word", min(spoken_score, 1.0)
+
+        # SOUNDTRACK detection
+        soundtrack_patterns = [r"soundtrack", r"\bost\b", r"score", r"original\s*motion\s*picture", r"from\s+the\s+movie", r"from\s+the\s+film"]
+        soundtrack_score = 0.0
+        for pattern in soundtrack_patterns:
+            if re.search(pattern, album_lower):
+                soundtrack_score += 0.35
+            if re.search(pattern, title_lower):
+                soundtrack_score += 0.2
+        if "soundtrack" in genre_lower or "score" in genre_lower or "ost" in genre_lower:
+            soundtrack_score += 0.3
+        if "composer" in artist_lower or "conductor" in artist_lower:
+            soundtrack_score += 0.15
+        if soundtrack_score >= 0.5:
+            return "soundtrack", min(soundtrack_score, 1.0)
+
+        return None, 0.0

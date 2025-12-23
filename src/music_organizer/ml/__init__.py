@@ -8,6 +8,7 @@ ensuring privacy and fast inference.
 """
 
 from .base import BaseModel, ModelLoadError, ModelNotAvailableError
+from .content_classifier import ContentTypeClassifier, ContentTypeClassificationResult, ContentType
 from .genre_classifier import GenreClassifier, GenreClassificationResult
 
 __all__ = [
@@ -16,4 +17,7 @@ __all__ = [
     "ModelNotAvailableError",
     "GenreClassifier",
     "GenreClassificationResult",
+    "ContentTypeClassifier",
+    "ContentTypeClassificationResult",
+    "ContentType",
 ]

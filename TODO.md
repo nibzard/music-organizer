@@ -824,6 +824,22 @@ music-batch-metadata /music/library --workers 8 --batch-size 200
     - Training utilities with automatic data splitting
   - **Test Coverage**: 31 tests passing, covering classification, training, edge cases, and rule fallback
   - **Documentation**: See Task 1.1 in `docs/ml-classification-research.md`
+- [x] ✅ **Implement ML Content Type Classifier** (2025-12-23)
+  - **Status**: Implementation complete - fully functional hybrid ML/rule-based content type classifier
+  - **Components Implemented**:
+    - Content type classifier with sklearn integration (`src/music_organizer/ml/content_classifier.py`)
+    - Core classifier integration with extended content type detection (`src/music_organizer/core/classifier.py`)
+    - 24 comprehensive tests covering all functionality
+  - **Features**:
+    - Detects REMIX (title patterns: remix, mix, edit, version, bootleg, mashup, DJ in artist)
+    - Detects PODCAST (title patterns: podcast, episode, interview, long duration >15min)
+    - Detects SPOKEN_WORD (title/album patterns: audiobook, chapter, speech, lecture, comedy)
+    - Detects SOUNDTRACK (album patterns: soundtrack, OST, score, composer in artist)
+    - Hybrid ML/rule-based approach - uses ML if available, falls back to pattern matching
+    - Lazy-loading of ML models for minimal overhead when not needed
+    - Confidence scoring for all predictions
+  - **Test Coverage**: 24 tests passing (16 for ML classifier, 8 for core classifier integration)
+  - **Documentation**: See Task 1.2 in `docs/ml-classification-research.md`
 - [x] ✅ **Prototype cloud storage integration** (2025-12-23)
   - **Findings**: Feasible via storage abstraction layer extending FilesystemAdapter
   - **Recommendation**: MVP with S3 (3-4 weeks), then add GCS/Azure

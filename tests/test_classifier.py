@@ -165,3 +165,142 @@ class TestContentClassifier:
         )
 
         assert ContentClassifier._has_rarity_indicators(rarity_file) is True
+
+
+class TestExtendedContentTypeClassification:
+    """Test extended content type classification (REMIX, PODCAST, SPOKEN_WORD, SOUNDTRACK)."""
+
+    def test_classify_remix(self):
+        """Test REMIX classification."""
+        audio_file = AudioFile(
+            path=Path("/test/remix.flac"),
+            file_type="FLAC",
+            artists=["DJ Producer"],
+            primary_artist="DJ Producer",
+            album="Remix Album",
+            title="Song Name (Club Mix)",
+            genre="Electronic"
+        )
+
+        content_type, confidence = ContentClassifier.classify_extended_content_type(audio_file)
+
+        assert content_type == "remix"
+        assert confidence > 0.5
+
+    def test_classify_podcast(self):
+        """Test PODCAST classification."""
+        audio_file = AudioFile(
+            path=Path("/test/podcast.mp3"),
+            file_type="MP3",
+            artists=["Host Name"],
+            primary_artist="Host Name",
+            album="My Podcast",
+            title="Episode 42: The Topic",
+            genre="Podcast"
+        )
+
+        content_type, confidence = ContentClassifier.classify_extended_content_type(audio_file)
+
+        assert content_type == "podcast"
+        assert confidence > 0.5
+
+    def test_classify_spoken_word(self):
+        """Test SPOKEN_WORD classification."""
+        audio_file = AudioFile(
+            path=Path("/test/audiobook.m4b"),
+            file_type="M4B",
+            artists=["Narrator Name"],
+            primary_artist="Narrator Name",
+            album="Audiobook Title",
+            title="Chapter 1",
+            genre="Audiobook"
+        )
+
+        content_type, confidence = ContentClassifier.classify_extended_content_type(audio_file)
+
+        assert content_type == "spoken_word"
+        assert confidence > 0.5
+
+    def test_classify_soundtrack(self):
+        """Test SOUNDTRACK classification."""
+        audio_file = AudioFile(
+            path=Path("/test/soundtrack.flac"),
+            file_type="FLAC",
+            artists=["Composer Name"],
+            primary_artist="Composer Name",
+            album="Movie Soundtrack (OST)",
+            title="Main Theme",
+            genre="Soundtrack"
+        )
+
+        content_type, confidence = ContentClassifier.classify_extended_content_type(audio_file)
+
+        assert content_type == "soundtrack"
+        assert confidence > 0.5
+
+    def test_classify_regular_song_no_extended_type(self):
+        """Test that regular songs return None for extended content types."""
+        audio_file = AudioFile(
+            path=Path("/test/song.flac"),
+            file_type="FLAC",
+            artists=["Band Name"],
+            primary_artist="Band Name",
+            album="Studio Album",
+            title="Regular Song",
+            genre="Rock"
+        )
+
+        content_type, confidence = ContentClassifier.classify_extended_content_type(audio_file)
+
+        assert content_type is None
+        assert confidence == 0.0
+
+    def test_remix_with_multiple_indicators(self):
+        """Test REMIX detection with multiple indicators increases confidence."""
+        audio_file = AudioFile(
+            path=Path("/test/remix.flac"),
+            file_type="FLAC",
+            artists=["DJ Producer"],
+            primary_artist="DJ Producer",
+            album="The Remixes",
+            title="Song (Dub Mix) - 2023 Version",
+            genre="Electronic"
+        )
+
+        content_type, confidence = ContentClassifier.classify_extended_content_type(audio_file)
+
+        assert content_type == "remix"
+        # Multiple indicators should give higher confidence
+        assert confidence > 0.7
+
+    def test_soundtrack_composer_in_artist(self):
+        """Test SOUNDTRACK detection when composer is in artist field."""
+        audio_file = AudioFile(
+            path=Path("/test/soundtrack.flac"),
+            file_type="FLAC",
+            artists=["John Powell (composer)"],
+            primary_artist="John Powell (composer)",
+            album="Motion Picture Score",
+            title="Action Theme"
+        )
+
+        content_type, confidence = ContentClassifier.classify_extended_content_type(audio_file)
+
+        assert content_type == "soundtrack"
+        assert confidence >= 0.5
+
+    def test_audiobook_narrator_in_artist(self):
+        """Test SPOKEN_WORD detection when narrator is in artist field."""
+        audio_file = AudioFile(
+            path=Path("/test/audiobook.m4b"),
+            file_type="M4B",
+            artists=["Author Name, read by Narrator Name"],
+            primary_artist="Author Name, read by Narrator Name",
+            album="Book Title",
+            title="Chapter 5"
+        )
+
+        content_type, confidence = ContentClassifier.classify_extended_content_type(audio_file)
+
+        assert content_type == "spoken_word"
+        assert confidence >= 0.5
