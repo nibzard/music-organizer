@@ -40,6 +40,21 @@ class EnergyLevel(Enum):
     VERY_HIGH = "very_high"
 
 
+class Mood(Enum):
+    """Mood classifications based on valence and energy."""
+    HAPPY = "happy"
+    SAD = "sad"
+    ENERGETIC = "energetic"
+    CALM = "calm"
+    ANGRY = "angry"
+    RELAXED = "relaxed"
+    MELANCHOLIC = "melancholic"
+    UPLIFTING = "uplifting"
+    DARK = "dark"
+    BRIGHT = "bright"
+    UNKNOWN = "unknown"
+
+
 class MatchType(Enum):
     """Types of pattern matching."""
     EXACT = "exact"

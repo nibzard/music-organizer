@@ -18,6 +18,13 @@ from .audio_features import (
     BatchProgress,
     is_available as audio_features_available,
 )
+from .mood_classifier import (
+    MoodClassifier,
+    MoodClassificationResult,
+    classify_mood,
+    get_mood_description,
+    get_mood_from_valence_energy,
+)
 
 __all__ = [
     "BaseModel",
@@ -34,4 +41,9 @@ __all__ = [
     "BatchAudioFeatureExtractor",
     "BatchProgress",
     "audio_features_available",
+    "MoodClassifier",
+    "MoodClassificationResult",
+    "classify_mood",
+    "get_mood_description",
+    "get_mood_from_valence_energy",
 ]

@@ -824,8 +824,8 @@ music-batch-metadata /music/library --workers 8 --batch-size 200
     - Training utilities with automatic data splitting
   - **Test Coverage**: 31 tests passing, covering classification, training, edge cases, and rule fallback
   - **Documentation**: See Task 1.1 in `docs/ml-classification-research.md`
-- [x] ✅ **Implement ML Content Type Classifier** (2025-12-23)
-  - **Status**: Implementation complete - fully functional hybrid ML/rule-based content type classifier
+- [x] ✅ **Task 1.2: Enhanced Content Type Classifier** (2025-12-23)
+  - **Status**: COMPLETED - fully functional hybrid ML/rule-based content type classifier
   - **Components Implemented**:
     - Content type classifier with sklearn integration (`src/music_organizer/ml/content_classifier.py`)
     - Core classifier integration with extended content type detection (`src/music_organizer/core/classifier.py`)
@@ -840,6 +840,26 @@ music-batch-metadata /music/library --workers 8 --batch-size 200
     - Confidence scoring for all predictions
   - **Test Coverage**: 24 tests passing (16 for ML classifier, 8 for core classifier integration)
   - **Documentation**: See Task 1.2 in `docs/ml-classification-research.md`
+- [x] ✅ **Task 2.1: Audio Feature Extraction with Librosa** (COMPLETED - 2025-12-23)
+  - **Status**: Implementation complete (commit: 1ebd55f)
+  - **Components Implemented**:
+    - AudioFeatureExtractor class (`src/music_organizer/ml/audio_features.py`)
+    - SQLite caching with FeatureCache for extracted features
+    - BatchAudioFeatureExtractor for parallel processing
+    - Async feature extraction with progress tracking
+  - **Features Extracted**:
+    - Tempo (BPM) using librosa.beat.tempo
+    - Key (chroma features) for harmonic analysis
+    - Energy (RMS energy) for loudness dynamics
+    - Danceability from rhythmic patterns
+    - Valence (mood) from timbral features
+    - Acousticness (spectral features)
+    - Speechiness (MFCC analysis)
+    - Spectral centroid, bandwidth, rolloff, zero-crossing rate
+  - **Dependencies**: librosa, numpy added
+  - **Test Coverage**: Comprehensive test suite for all feature extraction methods
+  - **Enables**: Mood classification, acoustic similarity, cover detection
+  - **Documentation**: See Task 2.1 in `docs/ml-classification-research.md`
 - [x] ✅ **Prototype cloud storage integration** (2025-12-23)
   - **Findings**: Feasible via storage abstraction layer extending FilesystemAdapter
   - **Recommendation**: MVP with S3 (3-4 weeks), then add GCS/Azure
