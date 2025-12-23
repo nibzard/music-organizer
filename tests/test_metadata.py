@@ -39,11 +39,11 @@ class TestMetadataHandler:
             result = handler._extract_flac_metadata(audio_file, mock_flac)
 
             assert result.artists == ['Test Artist']
-            assert result.album == ['Test Album']  # _get_single_field returns a list
-            assert result.title == ['Test Track']
+            assert result.album == 'Test Album'
+            assert result.title == 'Test Track'
             assert result.year == 2023
             assert result.track_number == 1
-            assert result.genre == ['Rock']
+            assert result.genre == 'Rock'
             assert result.has_cover_art
 
     def test_extract_mp3_metadata(self):

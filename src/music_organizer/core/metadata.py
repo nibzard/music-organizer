@@ -154,23 +154,32 @@ class MetadataHandler:
 
         # Basic fields
         audio_file.artists = MetadataHandler._get_id3_text(tags, ['TPE1'])  # Artist
-        audio_file.primary_artist = MetadataHandler._get_id3_text(tags, ['TPE2']) or \
-                                   (audio_file.artists[0] if audio_file.artists else None)  # Album Artist
-        audio_file.album = MetadataHandler._get_id3_text(tags, ['TALB'])
-        audio_file.title = MetadataHandler._get_id3_text(tags, ['TIT2'])
-        audio_file.genre = MetadataHandler._get_id3_text(tags, ['TCON'])
+
+        primary_artist_list = MetadataHandler._get_id3_text(tags, ['TPE2'])  # Album Artist
+        audio_file.primary_artist = primary_artist_list[0] if primary_artist_list else \
+                                   (audio_file.artists[0] if audio_file.artists else None)
+
+        # Single-value fields - get first element
+        album_list = MetadataHandler._get_id3_text(tags, ['TALB'])
+        audio_file.album = album_list[0] if album_list else None
+
+        title_list = MetadataHandler._get_id3_text(tags, ['TIT2'])
+        audio_file.title = title_list[0] if title_list else None
+
+        genre_list = MetadataHandler._get_id3_text(tags, ['TCON'])
+        audio_file.genre = genre_list[0] if genre_list else None
 
         # Date fields
         year = MetadataHandler._get_id3_text(tags, ['TDRC', 'TYER'])
         if year:
-            year_match = re.match(r'(\d{4})', str(year))
+            year_match = re.match(r'(\d{4})', str(year[0]) if isinstance(year, list) else str(year))
             if year_match:
                 audio_file.year = int(year_match.group(1))
 
         # Track number
         track = MetadataHandler._get_id3_text(tags, ['TRCK'])
         if track:
-            track_match = re.match(r'(\d+)', str(track))
+            track_match = re.match(r'(\d+)', str(track[0]) if isinstance(track, list) else str(track))
             if track_match:
                 audio_file.track_number = int(track_match.group(1))
 
@@ -321,16 +330,25 @@ class MetadataHandler:
         # WMA uses different tag names
         # Basic fields
         audio_file.artists = MetadataHandler._get_wma_field(tags, ['Author', 'Artist'])
-        audio_file.primary_artist = MetadataHandler._get_wma_field(tags, ['AlbumArtist']) or \
+
+        primary_artist_list = MetadataHandler._get_wma_field(tags, ['AlbumArtist'])
+        audio_file.primary_artist = primary_artist_list[0] if primary_artist_list else \
                                    (audio_file.artists[0] if audio_file.artists else None)
-        audio_file.album = MetadataHandler._get_wma_field(tags, ['AlbumTitle', 'Album'])
-        audio_file.title = MetadataHandler._get_wma_field(tags, ['Title'])
-        audio_file.genre = MetadataHandler._get_wma_field(tags, ['Genre'])
+
+        # Single-value fields - get first element
+        album_list = MetadataHandler._get_wma_field(tags, ['AlbumTitle', 'Album'])
+        audio_file.album = album_list[0] if album_list else None
+
+        title_list = MetadataHandler._get_wma_field(tags, ['Title'])
+        audio_file.title = title_list[0] if title_list else None
+
+        genre_list = MetadataHandler._get_wma_field(tags, ['Genre'])
+        audio_file.genre = genre_list[0] if genre_list else None
 
         # Date fields
         year = MetadataHandler._get_wma_field(tags, ['Year', 'ReleaseDate'])
         if year:
-            year_match = re.match(r'(\d{4})', str(year))
+            year_match = re.match(r'(\d{4})', str(year[0]) if isinstance(year, list) else str(year))
             if year_match:
                 audio_file.year = int(year_match.group(1))
 
@@ -338,7 +356,7 @@ class MetadataHandler:
         track = MetadataHandler._get_wma_field(tags, ['TrackNumber'])
         if track:
             try:
-                audio_file.track_number = int(track)
+                audio_file.track_number = int(track[0] if isinstance(track, list) else track)
             except (ValueError, TypeError):
                 pass
 
