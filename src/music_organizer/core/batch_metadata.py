@@ -100,10 +100,10 @@ class BatchResult:
 class BatchMetadataProcessor:
     """High-performance batch metadata processor."""
 
-    def __init__(self, config: BatchMetadataConfig):
+    def __init__(self, config: BatchMetadataConfig, adapter: Optional[MutagenMetadataAdapter] = None):
         self.config = config
         self.executor = ThreadPoolExecutor(max_workers=config.max_workers)
-        self.adapter = MutagenMetadataAdapter()
+        self.adapter = adapter if adapter is not None else MutagenMetadataAdapter()
         self._operation_history: List[Dict] = []
         self._start_time: Optional[datetime] = None
 
@@ -212,7 +212,7 @@ class BatchMetadataProcessor:
                 return {'status': 'failed', 'error': 'File does not exist'}
 
             # Read current metadata
-            current_metadata = self.adapter.read_metadata(file_path)
+            current_metadata = await self.adapter.read_metadata(file_path)
             if current_metadata is None:
                 return {'status': 'failed', 'error': 'Cannot read metadata'}
 
@@ -248,8 +248,10 @@ class BatchMetadataProcessor:
 
                 # Preserve modification time if configured
                 if self.config.preserve_modified_time:
+                    import os
                     original_mtime = file_path.stat().st_mtime
-                    file_path.touch(times=(original_mtime, original_mtime))
+                    original_atime = file_path.stat().st_atime
+                    os.utime(file_path, (original_atime, original_mtime))
 
             return {
                 'status': 'success',
@@ -494,7 +496,7 @@ class BatchMetadataProcessor:
         backup_data = {}
 
         for file_path in files:
-            metadata = self.adapter.read_metadata(file_path)
+            metadata = await self.adapter.read_metadata(file_path)
             if metadata:
                 backup_data[str(file_path)] = metadata.to_dict()
 
@@ -505,12 +507,12 @@ class BatchMetadataProcessor:
     def _dict_to_metadata(self, metadata_dict: Dict) -> Metadata:
         """Convert dictionary to Metadata object."""
         # Convert artists
-        artists = []
+        artists = frozenset()
         if 'artists' in metadata_dict and metadata_dict['artists']:
             if isinstance(metadata_dict['artists'], list):
-                artists = [ArtistName(a) for a in metadata_dict['artists']]
+                artists = frozenset(ArtistName(a) for a in metadata_dict['artists'])
             else:
-                artists = [ArtistName(metadata_dict['artists'])]
+                artists = frozenset({ArtistName(metadata_dict['artists'])})
 
         # Convert album artist
         albumartist = None
@@ -529,7 +531,6 @@ class BatchMetadataProcessor:
             year=metadata_dict.get('year'),
             genre=metadata_dict.get('genre'),
             track_number=track_number,
-            total_tracks=metadata_dict.get('total_tracks'),
             disc_number=metadata_dict.get('disc_number'),
             total_discs=metadata_dict.get('total_discs'),
             albumartist=albumartist,
@@ -537,7 +538,11 @@ class BatchMetadataProcessor:
             duration_seconds=metadata_dict.get('duration_seconds'),
             bitrate=metadata_dict.get('bitrate'),
             sample_rate=metadata_dict.get('sample_rate'),
-            channels=metadata_dict.get('channels')
+            channels=metadata_dict.get('channels'),
+            date=metadata_dict.get('date'),
+            location=metadata_dict.get('location'),
+            file_hash=metadata_dict.get('file_hash'),
+            acoustic_fingerprint=metadata_dict.get('acoustic_fingerprint')
         )
 
     async def cleanup(self) -> None:

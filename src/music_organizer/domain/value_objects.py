@@ -479,7 +479,7 @@ class Metadata:
         if self.albumartist:
             result['albumartist'] = str(self.albumartist)
         if self.track_number:
-            result['track_number'] = self.track_number.to_dict()
+            result['track_number'] = str(self.track_number)
         return result
 
     def with_field(self, **kwargs) -> Metadata:

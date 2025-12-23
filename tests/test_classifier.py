@@ -1,6 +1,7 @@
 """Tests for content classification."""
 
 import pytest
+from pathlib import Path
 from music_organizer.core.classifier import ContentClassifier
 from music_organizer.models.audio_file import AudioFile, ContentType
 

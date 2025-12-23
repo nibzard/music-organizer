@@ -461,6 +461,7 @@ class TestBulkMoveOperator:
         # Create AudioFile object
         audio_file = AudioFile(
             path=test_file,
+            file_type="FLAC",
             artists=["Test Artist"],
             title="Test Track",
             album="Test Album"
@@ -490,7 +491,8 @@ class TestBulkMoveOperator:
         cover_art = CoverArt(
             path=cover_file,
             type="front",
-            format="jpg"
+            format="jpg",
+            size=len(b"image data")
         )
 
         mover = BulkMoveOperator()
@@ -650,7 +652,11 @@ class TestIntegration:
         assert result.total_files == 6  # 1 fake + 5 real
         assert result.successful == 5  # Only real files should succeed
         assert result.failed == 1  # Fake file should fail
-        assert len(result.errors) == 1
+
+        # Check that the failed operation is in the operations list
+        failed_ops = [op for op in result.operations if op.get('status') == 'failed']
+        assert len(failed_ops) == 1
+        assert 'nonexistent' in failed_ops[0]['source']
 
         # Verify valid files were still processed
         for i in range(5):

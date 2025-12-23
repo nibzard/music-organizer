@@ -90,7 +90,7 @@ class ContentClassifier:
         """
         # Check for collaborations first
         collab_type, collab_score = cls._classify_collaboration(audio_file)
-        if collab_type == ContentType.COLLABORATION and collab_score > 0.7:
+        if collab_type == ContentType.COLLABORATION and collab_score > 0.6:
             return collab_type, collab_score
 
         # Check for live recordings
@@ -215,9 +215,12 @@ class ContentClassifier:
             if len(audio_file.artists) > 5:
                 # Likely session musicians - don't treat as collaboration
                 score -= 0.2
+            elif len(audio_file.artists) == 2:
+                # Two artists is strong collaboration indicator
+                score += 0.7
             elif len(audio_file.artists) <= 3:
                 # Small number could be actual collaborators
-                score += 0.3
+                score += 0.5
 
         # Check album/artist names for collaboration indicators
         text_to_check = []
@@ -381,7 +384,7 @@ class ContentClassifier:
             return match.group(1)
 
         # Just the year
-        match = re.search(r'\b(19|20)\d{2}\b', text)
+        match = re.search(r'\b((19|20)\d{2})\b', text)
         if match:
             return match.group(1)
 
@@ -390,18 +393,25 @@ class ContentClassifier:
     @classmethod
     def extract_location_from_string(cls, text: str) -> Optional[str]:
         """Extract location information from text."""
+        # Pattern: YYYY-MM-DD - LOCATION (full date stamp before location)
+        match = re.search(r'\d{4}-\d{2}-\d{2}\s*-\s*(.+)', text)
+        if match:
+            return match.group(1).strip()
+
+        # Pattern: Live at LOCATION
+        match = re.search(r'live at\s+(.+)', text, flags=re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+
+        # Pattern: YYYY - LOCATION (year before location)
+        match = re.search(r'\d{4}\s*-\s*(.+)', text)
+        if match:
+            return match.group(1).strip()
+
         # Pattern: City, State/Country
         match = re.search(r'([A-Za-z\s]+,\s*[A-Za-z]{2,})', text)
         if match:
             return match.group(1).strip()
-
-        # Pattern: City Name
-        # This would need a list of known cities or be very conservative
-        # For now, just return if it looks like a location
-        if re.search(r'\d{4}\s*-\s*([^-]+)', text):
-            location = re.sub(r'^\d{4}\s*-\s*', '', text).strip()
-            if len(location) > 3 and location[0].isupper():
-                return location
 
         return None
 
@@ -410,8 +420,20 @@ class ContentClassifier:
         """Check if classification is ambiguous and requires user input."""
         content_type, score = cls.classify(audio_file)
 
-        # Low confidence indicates ambiguity
-        if score < 0.6:
+        # Studio albums with default score and no indicators are not ambiguous
+        if content_type == ContentType.STUDIO and score == 0.5:
+            # Check if there are any conflicting indicators
+            indicators = [
+                cls._has_live_indicators(audio_file),
+                cls._has_compilation_indicators(audio_file),
+                cls._has_rarity_indicators(audio_file),
+            ]
+            # Only consider ambiguous if there are multiple indicators
+            if sum(indicators) <= 1:
+                return False
+
+        # Low confidence (other than default studio) indicates ambiguity
+        if score < 0.6 and score != 0.5:
             return True
 
         # Multiple indicators suggest ambiguity
