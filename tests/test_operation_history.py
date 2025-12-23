@@ -6,6 +6,7 @@ import shutil
 from datetime import datetime, timedelta
 from pathlib import Path
 import json
+from dataclasses import replace
 
 from music_organizer.core.operation_history import (
     OperationHistoryTracker,
@@ -174,15 +175,8 @@ class TestOperationHistoryTracker:
         ]
 
         # Update status for some operations
-        operations[0] = OperationRecord(
-            **operations[0].__dict__,
-            status=OperationStatus.COMPLETED
-        )
-        operations[1] = OperationRecord(
-            **operations[1].__dict__,
-            status=OperationStatus.FAILED,
-            error_message="Test error"
-        )
+        operations[0] = replace(operations[0], status=OperationStatus.COMPLETED)
+        operations[1] = replace(operations[1], status=OperationStatus.FAILED, error_message="Test error")
 
         # Record operations
         for op in operations:
@@ -354,10 +348,7 @@ class TestOperationRollbackService:
         )
 
         # Update to completed
-        operation = OperationRecord(
-            **operation.__dict__,
-            status=OperationStatus.COMPLETED
-        )
+        operation = replace(operation, status=OperationStatus.COMPLETED)
 
         await history_tracker.record_operation(operation)
 
@@ -400,10 +391,7 @@ class TestOperationRollbackService:
         )
 
         # Update to completed
-        operation = OperationRecord(
-            **operation.__dict__,
-            status=OperationStatus.COMPLETED
-        )
+        operation = replace(operation, status=OperationStatus.COMPLETED)
 
         await history_tracker.record_operation(operation)
 
@@ -486,8 +474,9 @@ class TestEnhancedAsyncFileMover:
         # Create AudioFile object
         audio_file = AudioFile(
             path=source_file,
+            file_type="mp3",
             title="Test Song",
-            artist="Test Artist",
+            primary_artist="Test Artist",
             album="Test Album",
             year=2023,
             genre="Test"
@@ -540,8 +529,9 @@ class TestEnhancedAsyncFileMover:
         # Create AudioFile object
         audio_file = AudioFile(
             path=source_file,
+            file_type="mp3",
             title="Test Song",
-            artist="Test Artist"
+            primary_artist="Test Artist"
         )
 
         target_path = target_dir / "test.mp3"
@@ -585,8 +575,9 @@ class TestEnhancedAsyncFileMover:
 
         audio_file = AudioFile(
             path=source_file,
+            file_type="mp3",
             title="Test",
-            artist="Artist"
+            primary_artist="Artist"
         )
 
         target_path = target_dir / "test.mp3"
@@ -633,10 +624,7 @@ class TestOperationSessionContextManager:
                 target_path=target_root / "file.mp3"
             )
 
-            operation = OperationRecord(
-                **operation.__dict__,
-                status=OperationStatus.COMPLETED
-            )
+            operation = replace(operation, status=OperationStatus.COMPLETED)
 
             await history_tracker.record_operation(operation)
 

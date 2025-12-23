@@ -131,7 +131,7 @@ class EnhancedAsyncFileMover:
             target_path=target_path,
             metadata={
                 "file_type": "audio",
-                "file_format": audio_file.format,
+                "file_format": audio_file.file_type,
                 "verify_checksum": verify_checksum
             }
         )

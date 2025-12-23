@@ -238,9 +238,16 @@ class OperationHistoryTracker:
         """Record a single operation."""
         try:
             with sqlite3.connect(self.db_path) as conn:
-                # Insert operation record
+                # Check if this is a new operation (first time recording)
+                cursor = conn.execute(
+                    "SELECT id FROM operation_records WHERE id = ?",
+                    (operation.id,)
+                )
+                is_new = cursor.fetchone() is None
+
+                # Insert or replace operation record
                 conn.execute(
-                    """INSERT INTO operation_records
+                    """INSERT OR REPLACE INTO operation_records
                        (id, session_id, timestamp, operation_type, source_path, target_path,
                         backup_path, status, error_message, checksum_before, checksum_after,
                         file_size, metadata)
@@ -263,6 +270,14 @@ class OperationHistoryTracker:
                 )
 
                 # Update session counters
+                if is_new:
+                    conn.execute(
+                        """UPDATE operation_sessions
+                           SET total_operations = total_operations + 1
+                           WHERE session_id = ?""",
+                        (operation.session_id,)
+                    )
+
                 if operation.status == OperationStatus.COMPLETED:
                     conn.execute(
                         """UPDATE operation_sessions
