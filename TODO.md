@@ -785,6 +785,21 @@ music-batch-metadata /music/library --workers 8 --batch-size 200
   - **Findings**: 7 ML opportunities identified, from quick wins (genre) to advanced (acoustic similarity)
   - **Recommendation**: Start with genre classifier (scikit-learn), add audio features (librosa)
   - **Documentation**: `docs/ml-classification-research.md`
+- [x] ✅ **Implement ML Genre Classifier** (2025-12-23)
+  - **Status**: Implementation complete - fully functional TF-IDF based genre classifier
+  - **Components Implemented**:
+    - Genre classifier with sklearn integration (`src/music_organizer/ml/genre_classifier.py`)
+    - Rule-based fallback system for unmatched genres
+    - Model training utilities with train/test split and serialization
+    - 31 comprehensive tests covering all functionality
+  - **Features**:
+    - TF-IDF vectorization with n-gram support (unigrams, bigrams, trigrams)
+    - Multinomial Naive Bayes classification with confidence scoring
+    - Rule-based fallback using keyword matching for common genres
+    - Model persistence (save/load) with pickle
+    - Training utilities with automatic data splitting
+  - **Test Coverage**: 31 tests passing, covering classification, training, edge cases, and rule fallback
+  - **Documentation**: See Task 1.1 in `docs/ml-classification-research.md`
 - [x] ✅ **Prototype cloud storage integration** (2025-12-23)
   - **Findings**: Feasible via storage abstraction layer extending FilesystemAdapter
   - **Recommendation**: MVP with S3 (3-4 weeks), then add GCS/Azure
@@ -2163,3 +2178,46 @@ result = StringSimilarity.fuzzy_match("Pink Floyd", "Pink Floydd")
 ---
 
 **Remember**: Simplicity is our superpower. Every feature should justify its complexity. If in doubt, leave it out.
+---
+
+## ✅ Additional Audio Formats Implementation (2025-12-23)
+
+### Task
+Implement support for additional audio formats beyond MP3/FLAC.
+
+### What Was Done
+- **Fixed WMA import**: Corrected to use ASF module (mutagen.asf) instead of non-existent WMA module
+- **Added APE (Monkey's Audio) support**: Full metadata extraction using mutagen.ape
+- **Verified OGG/OPUS support**: Already working with mutagen.ogg and mutagen.opus
+- **Updated AudioFile model**: Added APE file type recognition
+- **Enhanced tests**: Created comprehensive test suite (6/6 passing)
+- **Updated documentation**: Updated AUDIO-FORMATS.md with complete format coverage
+
+### Formats Now Supported
+- **MP3**: ID3v1, ID3v2 tags
+- **FLAC**: Vorbis comments, embedded pictures
+- **WMA**: ASF metadata
+- **OGG**: Vorbis comments
+- **OPUS**: Vorbis comments in Ogg container
+- **APE**: APEv2 tags (Monkey's Audio)
+
+### Not Implemented
+- **WAVPACK**: Not supported by mutagen library (would require custom implementation)
+
+### Test Results
+- **File**: `tests/test_new_audio_formats.py`
+- **Status**: 6/6 passing (100%)
+- **Coverage**: WMA, APE, OGG, OPUS metadata extraction
+
+### Key Files
+- `src/music_organizer/domain/entities/audio_file.py` - AudioFile model with APE support
+- `src/music_organizer/services/metadata_extractor.py` - Enhanced format detection
+- `tests/test_new_audio_formats.py` - Comprehensive format tests
+- `docs/AUDIO-FORMATS.md` - Updated documentation
+
+### Technical Details
+- **APE format**: Uses mutagen.ape.MonkeysAudio
+- **WMA format**: Uses mutagen.asf.ASF (not mutagen.wma)
+- **File type detection**: Extended AudioFile.file_type property
+- **Metadata mapping**: Consistent across all formats (artist, album, title, genre, etc.)
+
