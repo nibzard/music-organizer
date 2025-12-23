@@ -796,10 +796,25 @@ music-batch-metadata /music/library --workers 8 --batch-size 200
   - Adapter: `src/music_organizer/infrastructure/external/musicbrainz_adapter.py`
   - AcoustId support: `src/music_organizer/infrastructure/external/acoustid_adapter.py`
   - Features: rate limiting, caching, fuzzy search, release lookup, artist search
-- [x] ✅ **Research Last.fm scrobbling integration** (2025-12-23)
-  - **Findings**: All required metadata available, adapter pattern exists
-  - **Recommendation**: 10-14 hours implementation (adapter + 2 plugins)
-  - **Documentation**: `docs/lastfm-integration-research.md`
+- [x] ✅ **Implement Last.fm scrobbling integration** (2025-12-23)
+  - **Status**: Implementation complete - fully functional Last.fm integration
+  - **Components Implemented**:
+    - Last.fm API adapter (`src/music_organizer/infrastructure/external/lastfm_adapter.py`)
+    - Scrobbling plugin for automatic track submissions
+    - Metadata enhancement plugin for Last.fm data
+    - Comprehensive authentication handling (API key, shared secret, session key)
+    - Rate limiting and caching for optimal performance
+  - **Features**:
+    - Track scrobbling with timestamp support
+    - Now playing updates
+    - User library retrieval and synchronization
+    - Artist/album/track metadata enrichment
+    - Loved tracks management
+    - Recent tracks retrieval
+  - **Authentication**: OAuth-based authentication with secure token handling
+  - **CLI Integration**: Full command-line support for scrobbling operations
+  - **Documentation**: `docs/lastfm-integration-research.md` (research) + implementation docs
+  - **Tests**: Comprehensive test suite for adapter and plugins
 - [x] ✅ **Research Kodi/Jellyfin compatibility mode** (2025-12-23)
   - **Findings**: All metadata available for NFO generation, plugin system ready
   - **Recommendation**: 12-16 hours for full NFO export plugin with MBID support
