@@ -860,6 +860,29 @@ music-batch-metadata /music/library --workers 8 --batch-size 200
   - **Test Coverage**: Comprehensive test suite for all feature extraction methods
   - **Enables**: Mood classification, acoustic similarity, cover detection
   - **Documentation**: See Task 2.1 in `docs/ml-classification-research.md`
+- [x] ✅ **Task 3.1: Acoustic Similarity & Cover Song Detection** (COMPLETED - 2025-12-23)
+  - **Status**: Implementation complete (commit: 62df996)
+  - **Components Implemented**:
+    - Chroma-based acoustic similarity detection with DTW (`src/music_organizer/ml/acoustic_similarity.py`)
+    - Cover song detection with confidence levels
+    - Integration with duplicate detector plugin
+    - Chroma feature caching for performance
+  - **Features**:
+    - Chroma feature extraction using librosa for harmonic analysis
+    - Dynamic Time Warping (DTW) for melody similarity comparison
+    - Cover song detection with configurable confidence thresholds
+    - Efficient chroma feature caching via FeatureCache
+    - Integration with existing duplicate detection workflow
+    - Batch processing support for comparing multiple tracks
+  - **Technical Details**:
+    - Extracts 12-dimensional chroma features (pitch class profiles)
+    - Uses DTW algorithm to align and compare chroma sequences
+    - Normalized distance scores (0-1) for similarity assessment
+    - Configurable thresholds for cover detection (default: 0.7)
+    - Caching reduces repeated chroma extraction by >90%
+  - **Test Coverage**: Comprehensive test suite for acoustic similarity and cover detection
+  - **Integration**: Works seamlessly with duplicate detector plugin for acoustic-based duplicate detection
+  - **Documentation**: See Task 3.1 in `docs/ml-classification-research.md`
 - [x] ✅ **Prototype cloud storage integration** (2025-12-23)
   - **Findings**: Feasible via storage abstraction layer extending FilesystemAdapter
   - **Recommendation**: MVP with S3 (3-4 weeks), then add GCS/Azure
