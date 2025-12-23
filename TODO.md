@@ -815,14 +815,44 @@ music-batch-metadata /music/library --workers 8 --batch-size 200
   - **CLI Integration**: Full command-line support for scrobbling operations
   - **Documentation**: `docs/lastfm-integration-research.md` (research) + implementation docs
   - **Tests**: Comprehensive test suite for adapter and plugins
-- [x] ✅ **Research Kodi/Jellyfin compatibility mode** (2025-12-23)
-  - **Findings**: All metadata available for NFO generation, plugin system ready
-  - **Recommendation**: 12-16 hours for full NFO export plugin with MBID support
-  - **Documentation**: `docs/kodi-jellyfin-research.md`
-- [x] ✅ **Research Spotify playlist import/export** (2025-12-23)
-  - **Findings**: M3U export exists, Spotify API requires OAuth2, track matching via similarity
-  - **Recommendation**: 15-20 hours for adapter + 3 plugins (metadata, import, export)
-  - **Documentation**: `docs/spotify-integration-research.md`
+- [x] ✅ **Implement Kodi/Jellyfin NFO export plugin** (2025-12-23)
+  - **Status**: Implementation complete - fully functional NFO export for Kodi/Jellyfin
+  - **Components Implemented**:
+    - NFO output plugin for generating Kodi/Jellyfin metadata files
+    - Full NFO generation with comprehensive metadata fields
+    - MusicBrainz MBID support for enhanced media center integration
+    - Artist, album, and track-level NFO file generation
+    - Support for embedded cover art and fanart references
+  - **Features**:
+    - Complete NFO XML structure compliant with Kodi/Jellyfin standards
+    - MusicBrainz artist, release, and recording MBIDs
+    - Extended metadata: genre, year, mood, style, rating, play count
+    - Artist biographies and album descriptions from MusicBrainz
+    - Track listings with disc and track numbers, durations, and MusicBrainz IDs
+    - Separate NFO files for artists, albums, and individual tracks
+  - **CLI Integration**: Full command-line support for NFO export operations
+  - **Documentation**: `docs/kodi-jellyfin-research.md` (research) + implementation docs
+  - **Tests**: Comprehensive test suite for NFO generation and validation
+- [x] ✅ **Implement Spotify integration** (2025-12-23)
+  - **Status**: Implementation complete - fully functional Spotify integration
+  - **Components Implemented**:
+    - Spotify API adapter (`src/music_organizer/infrastructure/external/spotify_adapter.py`)
+    - OAuth2 authentication flow with secure token handling
+    - Metadata enhancement plugin for Spotify data
+    - Playlist import/export plugins (M3U and Spotify formats)
+    - Track matching and similarity detection
+  - **Features**:
+    - Full OAuth2 authentication flow with PKCE
+    - Playlist import from Spotify with track matching
+    - Playlist export to Spotify with metadata enhancement
+    - Artist/album/track metadata enrichment from Spotify
+    - Audio features and recommendations support
+    - User library and playlist management
+  - **Authentication**: OAuth2 with PKCE for secure client-side authentication
+  - **CLI Integration**: Full command-line support for playlist operations
+  - **Documentation**: `docs/spotify-integration-research.md` (research) + implementation docs
+  - **Tests**: Comprehensive test suite for adapter and plugins
+  - **Commit**: ca40282 "feat: Add Spotify integration with metadata enhancement and playlist management"
 
 ## 📝 Recent Implementations
 
