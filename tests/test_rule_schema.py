@@ -404,7 +404,8 @@ class TestSchemaConstants:
 
     def test_operator_enum_values(self):
         """Test that all expected operators are in the enum."""
-        operators_path = EXTENDED_RULE_SCHEMA["properties"]["rules"]["items"]["properties"]["conditions"]["items"]["properties"]["operator"]["enum"]
+        # EXTENDED_RULE_SCHEMA uses allOf to include RULE_SCHEMA, access via RULE_SCHEMA directly
+        operators_path = RULE_SCHEMA["properties"]["rules"]["items"]["properties"]["conditions"]["items"]["properties"]["operator"]["enum"]
         expected_operators = [
             "eq", "ne", "contains", "not_contains",
             "matches", "not_matches", "starts_with", "ends_with",

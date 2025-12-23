@@ -93,7 +93,16 @@ class MusicBrainzEnhancerPlugin(MetadataPlugin):
     def cleanup(self) -> None:
         """Cleanup resources."""
         if self._session:
-            asyncio.create_task(self._session.close())
+            # Close the session synchronously - it will be closed when the loop runs
+            # In async contexts, the session will be properly closed
+            try:
+                loop = asyncio.get_running_loop()
+                # We're in an async context, schedule the close
+                loop.create_task(self._session.close())
+            except RuntimeError:
+                # No running loop, just clear the reference
+                # The session will be garbage collected
+                pass
             self._session = None
         self._cache.clear()
         logger.info("MusicBrainz enhancer plugin cleaned up")
