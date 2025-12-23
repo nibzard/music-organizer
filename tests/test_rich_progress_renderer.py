@@ -6,7 +6,7 @@ from rich.console import Console
 from rich.progress import Progress
 from rich.live import Live
 
-from music_organizer.progress_tracker import ProgressMetrics, ProgressStage, Stage
+from music_organizer.progress_tracker import ProgressMetrics, ProgressStage
 from music_organizer.rich_progress_renderer import RichProgressRenderer
 
 
@@ -50,9 +50,9 @@ class TestRichProgressRenderer:
         metrics = ProgressMetrics(
             files_total=100,
             files_processed=0,
-            current_stage=Stage.SCANNING
+            current_stage=ProgressStage.SCANNING
         )
-        metrics.stages[Stage.SCANNING] = ProgressStage(stage=Stage.SCANNING, total=10, completed=0)
+        metrics.stages[ProgressStage.SCANNING] = ProgressStage(stage=ProgressStage.SCANNING, total=10, completed=0)
 
         # Render
         self.renderer.render(metrics)
@@ -167,10 +167,10 @@ class TestRichProgressRenderer:
         metrics = ProgressMetrics(
             files_total=100,
             files_processed=10,
-            current_stage=Stage.EXTRACTING_METADATA
+            current_stage=ProgressStage.METADATA_EXTRACTION
         )
-        metrics.stages[Stage.EXTRACTING_METADATA] = ProgressStage(
-            stage=Stage.EXTRACTING_METADATA,
+        metrics.stages[ProgressStage.METADATA_EXTRACTION] = ProgressStage(
+            stage=ProgressStage.METADATA_EXTRACTION,
             total=20,
             completed=5
         )
@@ -197,10 +197,10 @@ class TestRichProgressRenderer:
         metrics = ProgressMetrics(
             files_total=100,
             files_processed=10,
-            current_stage=Stage.PROCESSING
+            current_stage=ProgressStage.CLASSIFICATION
         )
-        metrics.stages[Stage.PROCESSING] = ProgressStage(
-            stage=Stage.PROCESSING,
+        metrics.stages[ProgressStage.CLASSIFICATION] = ProgressStage(
+            stage=ProgressStage.CLASSIFICATION,
             total=20,
             completed=15
         )
@@ -228,15 +228,15 @@ class TestRichProgressRenderer:
         metrics = ProgressMetrics(
             files_total=100,
             files_processed=10,
-            current_stage=Stage.PROCESSING
+            current_stage=ProgressStage.CLASSIFICATION
         )
-        metrics.stages[Stage.SCANNING] = ProgressStage(
-            stage=Stage.SCANNING,
+        metrics.stages[ProgressStage.SCANNING] = ProgressStage(
+            stage=ProgressStage.SCANNING,
             total=10,
             completed=10  # Complete
         )
-        metrics.stages[Stage.PROCESSING] = ProgressStage(
-            stage=Stage.PROCESSING,
+        metrics.stages[ProgressStage.CLASSIFICATION] = ProgressStage(
+            stage=ProgressStage.CLASSIFICATION,
             total=20,
             completed=5
         )

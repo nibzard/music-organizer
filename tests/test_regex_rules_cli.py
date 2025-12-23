@@ -14,7 +14,7 @@ from music_organizer.regex_rules_cli import (
 )
 from music_organizer.core.regex_rule_engine import Rule, RuleCondition, ComparisonOperator
 from music_organizer.models.audio_file import AudioFile
-from music_organizer.models.content_type import ContentType
+from music_organizer.models import ContentType
 
 
 @pytest.fixture

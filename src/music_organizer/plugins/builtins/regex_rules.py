@@ -11,7 +11,7 @@ from dataclasses import dataclass
 
 from ..base import PathPlugin, PluginInfo
 from ...models.audio_file import AudioFile
-from ...core.regex_rules import RegexRuleEngine, Rule
+from ...core.regex_rule_engine import RegexRuleEngine, Rule
 
 logger = logging.getLogger(__name__)
 

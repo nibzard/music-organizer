@@ -10,7 +10,7 @@ from music_organizer.plugins.builtins.custom_naming_pattern import (
     create_plugin
 )
 from music_organizer.models.audio_file import AudioFile
-from music_organizer.models.content_type import ContentType
+from music_organizer.models import ContentType
 
 
 class TestPatternTemplate:

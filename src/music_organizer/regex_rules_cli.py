@@ -13,8 +13,8 @@ from .core.rule_schema import validate_rule_file, validate_rule_json, create_exa
 from .plugins.builtins.regex_rules import RegexRulesPlugin
 from .models.audio_file import AudioFile
 from .models.config import load_config
-from .metadata import MetadataHandler
-from .file_scanner import AsyncFileScanner
+from .core.metadata import MetadataHandler
+from .core.incremental_scanner import IncrementalScanner
 from .console_utils import SimpleConsole
 
 logger = logging.getLogger(__name__)

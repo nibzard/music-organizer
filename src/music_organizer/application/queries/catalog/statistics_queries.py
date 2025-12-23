@@ -1,14 +1,14 @@
 """Statistics-related queries."""
 
-from dataclasses import dataclass
-from typing import Dict, List, Tuple, Any
+from dataclasses import dataclass, field
+from typing import Dict, List, Tuple, Any, Optional
 from datetime import datetime, timedelta
 
 from ...queries.base import Query, QueryHandler, QueryResult
 from ....domain.catalog.repositories import RecordingRepository, CatalogRepository
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class GetLibraryStatisticsQuery(Query):
     """Query to get overall library statistics."""
 
@@ -16,7 +16,7 @@ class GetLibraryStatisticsQuery(Query):
     include_detailed_breakdown: bool = True
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class GetArtistStatisticsQuery(Query):
     """Query to get artist-specific statistics."""
 
@@ -24,7 +24,7 @@ class GetArtistStatisticsQuery(Query):
     include_releases: bool = False
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class GetGenreDistributionQuery(Query):
     """Query to get genre distribution in the library."""
 

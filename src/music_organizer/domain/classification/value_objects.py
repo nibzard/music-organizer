@@ -367,3 +367,7 @@ class ClassificationContext:
             "high": 1.2
         }
         return modifiers.get(self.source_confidence, 1.0)
+
+
+# Type alias for backward compatibility
+ContentType = ContentTypeEnum

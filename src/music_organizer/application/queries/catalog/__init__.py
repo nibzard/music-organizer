@@ -9,7 +9,6 @@ from .recording_queries import (
     GetDuplicateGroupsQuery
 )
 from .statistics_queries import (
-    CatalogStatisticsQueries,
     GetLibraryStatisticsQuery,
     GetArtistStatisticsQuery,
     GetGenreDistributionQuery
@@ -22,7 +21,6 @@ __all__ = [
     "GetRecordingsByGenreQuery",
     "SearchRecordingsQuery",
     "GetDuplicateGroupsQuery",
-    "CatalogStatisticsQueries",
     "GetLibraryStatisticsQuery",
     "GetArtistStatisticsQuery",
     "GetGenreDistributionQuery",

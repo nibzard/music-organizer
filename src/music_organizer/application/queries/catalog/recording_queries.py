@@ -1,6 +1,6 @@
 """Recording-related queries."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
@@ -10,14 +10,14 @@ from ....domain.catalog.repositories import RecordingRepository
 from ....domain.value_objects import ArtistName
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class GetRecordingByIdQuery(Query):
     """Query to get a recording by ID."""
 
     recording_id: str
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class GetRecordingsByArtistQuery(Query):
     """Query to get recordings by artist."""
 
@@ -26,7 +26,7 @@ class GetRecordingsByArtistQuery(Query):
     offset: int = 0
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class GetRecordingsByGenreQuery(Query):
     """Query to get recordings by genre."""
 
@@ -35,21 +35,17 @@ class GetRecordingsByGenreQuery(Query):
     offset: int = 0
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class SearchRecordingsQuery(Query):
     """Query to search recordings by text."""
 
     search_term: str
-    search_fields: List[str] = None  # Defaults to title, artist, album
+    search_fields: List[str] = field(default_factory=lambda: ['title', 'artist', 'album'])
     limit: Optional[int] = None
     offset: int = 0
 
-    def __post_init__(self):
-        if self.search_fields is None:
-            object.__setattr__(self, 'search_fields', ['title', 'artist', 'album'])
 
-
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class GetDuplicateGroupsQuery(Query):
     """Query to get duplicate recording groups."""
 
@@ -64,6 +60,11 @@ class RecordingSearchResult:
     recordings: List[Dict[str, Any]]
     total_count: int
     query_time_ms: float
+
+    def __init__(self, recordings: List[Dict[str, Any]], total_count: int, query_time_ms: float):
+        self.recordings = recordings
+        self.total_count = total_count
+        self.query_time_ms = query_time_ms
 
 
 class RecordingQueries:

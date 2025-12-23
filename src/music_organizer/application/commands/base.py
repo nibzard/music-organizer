@@ -13,7 +13,7 @@ C = TypeVar("C", bound="Command")
 R = TypeVar("R", bound="CommandResult")
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class Command:
     """Base command class with metadata."""
 

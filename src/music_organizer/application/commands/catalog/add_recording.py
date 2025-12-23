@@ -1,6 +1,6 @@
 """Add recording command."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field, KW_ONLY
 from pathlib import Path
 from typing import Dict, Any
 
@@ -11,13 +11,13 @@ from ....domain.catalog.repositories import RecordingRepository
 from ....domain.value_objects import AudioPath, Metadata
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class AddRecordingCommand(Command):
     """Command to add a new recording to the catalog."""
 
     file_path: Path
-    metadata: Dict[str, Any]
     catalog_id: str = "default"
+    recording_metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 class RecordingAddedEvent(DomainEvent):
@@ -54,7 +54,7 @@ class AddRecordingCommandHandler(CommandHandler[AddRecordingCommand, CommandResu
         try:
             # Create value objects
             audio_path = AudioPath(command.file_path)
-            metadata = Metadata(**command.metadata)
+            metadata = Metadata(**command.recording_metadata)
 
             # Create recording entity
             recording = Recording(path=audio_path, metadata=metadata)
@@ -77,7 +77,7 @@ class AddRecordingCommandHandler(CommandHandler[AddRecordingCommand, CommandResu
                 recording_id=recording.id,
                 file_path=command.file_path,
                 catalog_id=command.catalog_id,
-                metadata=command.metadata
+                metadata=command.recording_metadata
             )
 
             result = CommandResult(
