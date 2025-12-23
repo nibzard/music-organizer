@@ -10,6 +10,14 @@ ensuring privacy and fast inference.
 from .base import BaseModel, ModelLoadError, ModelNotAvailableError
 from .content_classifier import ContentTypeClassifier, ContentTypeClassificationResult, ContentType
 from .genre_classifier import GenreClassifier, GenreClassificationResult
+from .audio_features import (
+    AudioFeatureExtractor,
+    AudioFeatureError,
+    FeatureCache,
+    BatchAudioFeatureExtractor,
+    BatchProgress,
+    is_available as audio_features_available,
+)
 
 __all__ = [
     "BaseModel",
@@ -20,4 +28,10 @@ __all__ = [
     "ContentTypeClassifier",
     "ContentTypeClassificationResult",
     "ContentType",
+    "AudioFeatureExtractor",
+    "AudioFeatureError",
+    "FeatureCache",
+    "BatchAudioFeatureExtractor",
+    "BatchProgress",
+    "audio_features_available",
 ]
