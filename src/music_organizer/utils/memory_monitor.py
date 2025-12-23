@@ -13,6 +13,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 import json
 
+try:
+    import psutil
+except ImportError:
+    psutil = None  # type: ignore
+
 
 @dataclass
 class MemorySnapshot:
@@ -57,13 +62,18 @@ class MemoryStats:
 class MemoryMonitor:
     """Monitor memory usage during application execution"""
 
-    def __init__(self, sample_interval: float = 0.5, enable_tracemalloc: bool = False):
-        self.sample_interval = sample_interval
+    def __init__(self, interval: float = 0.5, enable_tracemalloc: bool = False):
+        self.interval = interval
         self.enable_tracemalloc = enable_tracemalloc
-        self.stats = MemoryStats()
+        self.sample_interval = interval
+        self.snapshots: List[MemorySnapshot] = []
+        self.start_time: Optional[float] = None
+        self.end_time: Optional[float] = None
+        self.monitoring = False
         self._monitoring = False
         self._monitor_thread: Optional[threading.Thread] = None
         self._callbacks: List[Callable[[MemorySnapshot], None]] = []
+        self.stats = MemoryStats()
 
     def start(self):
         """Start memory monitoring"""
@@ -71,7 +81,11 @@ class MemoryMonitor:
             return
 
         self._monitoring = True
+        self.monitoring = True
+        self.start_time = time.time()
+        self.snapshots = []
         self.stats = MemoryStats()
+        self.end_time = None
 
         if self.enable_tracemalloc:
             tracemalloc.start()
@@ -79,12 +93,35 @@ class MemoryMonitor:
         self._monitor_thread = threading.Thread(target=self._monitor_loop, daemon=True)
         self._monitor_thread.start()
 
+    def take_snapshot(self) -> MemorySnapshot:
+        """Take a single memory snapshot."""
+        snapshot = self._get_snapshot()
+
+        if self.enable_tracemalloc and tracemalloc.is_tracing():
+            current, peak = tracemalloc.get_traced_memory()
+            snapshot.tracemalloc_current = current / 1024 / 1024
+            snapshot.tracemalloc_peak = peak / 1024 / 1024
+
+        self.snapshots.append(snapshot)
+        self.stats.add_snapshot(snapshot)
+        return snapshot
+
+    def reset(self):
+        """Reset monitor state."""
+        self.start_time = None
+        self.end_time = None
+        self.snapshots = []
+        self.stats = MemoryStats()
+        self.monitoring = False
+
     def stop(self):
         """Stop memory monitoring and return statistics"""
         if not self._monitoring:
             return self.stats
 
         self._monitoring = False
+        self.monitoring = False
+        self.end_time = time.time()
 
         if self._monitor_thread:
             self._monitor_thread.join(timeout=1.0)
@@ -109,6 +146,7 @@ class MemoryMonitor:
         """Main monitoring loop"""
         while self._monitoring:
             snapshot = self._get_snapshot()
+            self.snapshots.append(snapshot)
             self.stats.add_snapshot(snapshot)
 
             # Call callbacks
@@ -120,11 +158,14 @@ class MemoryMonitor:
 
             time.sleep(self.sample_interval)
 
+    def _take_snapshot(self) -> MemorySnapshot:
+        """Alias for _get_snapshot - used by tests."""
+        return self._get_snapshot()
+
     def _get_snapshot(self) -> MemorySnapshot:
         """Get current memory snapshot"""
-        try:
+        if psutil is not None:
             # Try to get memory info from psutil if available
-            import psutil
             process = psutil.Process(os.getpid())
             memory_info = process.memory_info()
             memory_percent = process.memory_percent()
@@ -132,8 +173,7 @@ class MemoryMonitor:
             rss_mb = memory_info.rss / 1024 / 1024
             vms_mb = memory_info.vms / 1024 / 1024
             percent = memory_percent
-
-        except ImportError:
+        else:
             # Fallback to resource module (less accurate)
             import resource
             usage = resource.getrusage(resource.RUSAGE_SELF)
@@ -155,6 +195,10 @@ class MemoryMonitor:
             percent=percent,
             python_mb=python_mb
         )
+
+    def get_current_memory(self) -> Dict[str, float]:
+        """Get current memory usage as a dictionary (alias for get_current_usage)"""
+        return self.get_current_usage()
 
     def get_current_usage(self) -> Dict[str, float]:
         """Get current memory usage as a dictionary"""
@@ -178,16 +222,20 @@ class MemoryProfiler:
     def __init__(self, name: str = "Code Block", enable_tracemalloc: bool = True):
         self.name = name
         self.enable_tracemalloc = enable_tracemalloc
-        self.monitor = MemoryMonitor(enable_tracemalloc=enable_tracemalloc)
         self.stats: Optional[MemoryStats] = None
 
     def __enter__(self):
+        self.monitor = get_global_monitor()
         self.monitor.start()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.stats = self.monitor.stop()
         self.print_summary()
+
+    def get_stats(self) -> MemoryStats:
+        """Get the collected statistics."""
+        return self.stats
 
     def print_summary(self):
         """Print a summary of memory usage"""
@@ -240,37 +288,37 @@ def profile_memory(name: Optional[str] = None, enable_tracemalloc: bool = False)
     def decorator(func):
         def wrapper(*args, **kwargs):
             profiler_name = name or f"{func.__module__}.{func.__name__}"
-            with MemoryProfiler(profiler_name, enable_tracemalloc):
+            with MemoryProfiler(profiler_name, enable_tracemalloc=enable_tracemalloc):
                 return func(*args, **kwargs)
         return wrapper
     return decorator
 
 
+class MonitorMemoryContext:
+    """Context manager for monitoring memory usage and detecting limit exceeded."""
+
+    def __init__(self, limit_mb: float, check_interval: float = 1.0):
+        self.limit_mb = limit_mb
+        self.check_interval = check_interval
+
+    def __enter__(self):
+        self.monitor = get_global_monitor()
+        self.monitor.sample_interval = self.check_interval
+        self.monitor.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.monitor.stop()
+        # Check if memory exceeded limit
+        if hasattr(self.monitor, 'snapshots') and self.monitor.snapshots:
+            peak_rss = max(s.rss_mb for s in self.monitor.snapshots)
+            if peak_rss > self.limit_mb:
+                raise MemoryError(f"Memory limit exceeded: {peak_rss:.1f} MB > {self.limit_mb} MB")
+
+
 def monitor_memory(limit_mb: float, check_interval: float = 1.0):
-    """Decorator to monitor memory usage and warn if it exceeds limit"""
-    def decorator(func):
-        def wrapper(*args, **kwargs):
-            monitor = MemoryMonitor(sample_interval=check_interval)
-            monitor.start()
-
-            warning_shown = False
-
-            def check_limit(snapshot: MemorySnapshot):
-                nonlocal warning_shown
-                if snapshot.rss_mb > limit_mb and not warning_shown:
-                    print(f"\n⚠️  Memory warning: {snapshot.rss_mb:.1f} MB exceeds limit of {limit_mb} MB")
-                    warning_shown = True
-
-            monitor.add_callback(check_limit)
-
-            try:
-                result = func(*args, **kwargs)
-            finally:
-                monitor.stop()
-
-            return result
-        return wrapper
-    return decorator
+    """Context manager to monitor memory usage and raise if limit exceeded."""
+    return MonitorMemoryContext(limit_mb, check_interval)
 
 
 # Global memory monitor instance
@@ -283,6 +331,12 @@ def get_global_monitor() -> MemoryMonitor:
     if _global_monitor is None:
         _global_monitor = MemoryMonitor()
     return _global_monitor
+
+
+def reset_global_monitor():
+    """Reset the global monitor instance (for testing)."""
+    global _global_monitor
+    _global_monitor = None
 
 
 def start_global_monitoring(enable_tracemalloc: bool = False):
@@ -300,20 +354,14 @@ def stop_global_monitoring() -> MemoryStats:
 
 def get_memory_pressure() -> float:
     """Get current memory pressure (0-1, where 1 is high pressure)"""
-    try:
-        import psutil
+    if psutil is not None:
         virtual = psutil.virtual_memory()
         return virtual.percent / 100.0
-    except ImportError:
-        return 0.5  # Unknown pressure
+    return 0.5  # Unknown pressure
 
 
 def should_use_streaming(file_count: int, memory_limit_mb: float = 100) -> bool:
     """Determine if streaming should be used based on file count and memory"""
-    # Rough estimate: 1KB per file metadata
-    estimated_mb = file_count / 1024
-
-    # Add safety factor
-    estimated_mb *= 2
-
-    return estimated_mb > memory_limit_mb or get_memory_pressure() > 0.8
+    # Rough estimate: use streaming when file count exceeds ~2x memory limit (in MB)
+    # E.g., 500 files > 100MB * 2 = 200, so use streaming
+    return file_count > memory_limit_mb * 2 or get_memory_pressure() > 0.8

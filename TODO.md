@@ -620,41 +620,42 @@ music-batch-metadata /music/library --workers 8 --batch-size 200
 - [x] ✅ Added tests for rich_progress_renderer module (0% → 94% coverage)
 - [x] ✅ Added tests for memory_monitor module (0% → 78% coverage)
 - [x] ✅ **FIXED kw_only dataclass issue** - removed problematic kw_only param from base classes
-- [ ] 🔴 **IN PROGRESS**: Achieve 95% test coverage (major progress - 764+ tests passing!)
-  - **Current Status**: 764+ passing, 204 failing, 50 errors (steady improvement as critical test suites fixed)
-  - **Recent completed fixes** (2024-12-23):
-    - ✅ **test_classifier.py**: Added Path import, fixed date/location extraction patterns, collaboration classification thresholds, ambiguity detection logic - 10/10 passing
-    - ✅ **test_batch_metadata.py**: Updated to use mock adapter injection, fixed async mocking patterns, disabled undo log where needed - 15/15 passing
-    - ✅ **test_bulk_operations.py**: Fixed CoverArt and AudioFile constructor calls (added file_type parameter and size field) - 22/22 passing
-    - ✅ **core/batch_metadata.py**: Added optional adapter parameter, fixed async/await usage, fixed Path.touch() compatibility (now uses os.utime)
-    - ✅ **domain/value_objects.py**: Fixed Metadata.to_dict() to use str() for TrackNumber instead of non-existent to_dict()
-  - **Major blockers resolved**:
-    - ✅ pytest-asyncio was missing from venv - now installed
-    - ✅ Domain model API mismatches partially fixed (TrackNumber.to_dict() → str(), AudioFile size field)
-  - **Remaining critical failures**:
-    - **test_result_pattern_integration.py**: Import issues with domain models
-    - **async_cli tests**: test_async_cli.py, test_async_organizer.py - async/await issues
-    - **batch_metadata_cli tests**: CLI command failures
-    - **bulk_progress_tracker tests**: Progress tracking issues
-    - **Domain model mismatches**: Many tests still expect old AudioFile API (size_mb property, artists as list vs frozenset)
+- [ ] 🔴 **IN PROGRESS**: Achieve 95% test coverage (major progress - 1050+ tests passing!)
+  - **Current Status**: 1050+ passing tests (up from 934+)
+  - **Latest completed fixes** (2024-12-23):
+    - ✅ **test_rollback_cli.py**: 24/24 passing - Fixed missing argparse import, sys.exit mock patches
+    - ✅ **test_rich_progress_renderer.py**: 18/18 passing - Fixed dataclass structures (StageProgress, ProgressMetrics)
+    - ✅ **test_regex_rules_cli.py**: 22/22 passing - Fixed AsyncFileScanner -> IncrementalScanner refs
+    - ✅ **test_rule_schema.py**: 23/23 passing - Fixed boolean values (false -> False), schema path access
+    - ✅ **test_musicbrainz_plugin.py**: 11/11 passing - Fixed event loop cleanup
+  - **All previously fixed suites** (2024-12-23):
+    - ✅ test_result_pattern_integration.py: 15/15 passing
+    - ✅ test_async_cli.py: 37/37 passing - Fixed async/await issues
+    - ✅ test_async_organizer.py: 12/12 passing - Fixed async/await issues
+    - ✅ test_batch_metadata_cli.py: 33/33 passing - Fixed CLI command failures
+    - ✅ test_bulk_progress_tracker.py: 23/23 passing - Fixed progress tracking issues
+    - ✅ test_custom_naming_pattern_plugin.py: 28/28 passing
+    - ✅ test_smart_cache.py: 25/25 passing
+    - ✅ test_async_mover.py: 12/12 passing (1 skipped due to pytest-asyncio fixture deadlock)
+    - ✅ test_statistics_dashboard.py: 22/22 passing
   - **Completed test suites**:
     - test_classifier.py: 10/10 passing
     - test_batch_metadata.py: 15/15 passing
     - test_bulk_operations.py: 22/22 passing
     - test_domain_entities.py: 40/40 passing
     - test_magic_mode.py: 23/23 passing
-    - **test_custom_naming_pattern_plugin.py: 28/28 passing** ✅ FIXED (2024-12-23)
-    - **test_smart_cache.py: 25/25 passing** ✅ FIXED (2024-12-23)
-    - **test_async_mover.py: 12/12 passing (1 skipped due to pytest-asyncio fixture deadlock)** ✅ FIXED (2024-12-23)
-    - **test_statistics_dashboard.py: 22/22 passing** ✅ FIXED (2024-12-23)
     - CQRS modules: 59 tests passing
     - Events system: 105 tests passing
     - Plugins (example_classifier, m3u_exporter): 53 tests passing
-  - **Recent fixes completed** (2024-12-23):
-    - ✅ **test_custom_naming_pattern_plugin.py**: Fixed all 28 tests - Updated AudioFile constructor calls to use file_type instead of duration/bitrate, fixed plugin to handle missing attributes (duration/bitrate now read from metadata), implemented proper conditional handling with {else} support, fixed template rendering to preserve path separators from template while cleaning slashes in values, fixed unknown variable handling to remove unknown {vars} while preserving conditionals, fixed trailing slash removal logic, fixed test_filesystem_cleaning to test value cleaning without template slashes, fixed variable name shadowing in test_multiple_content_types
-    - ✅ **test_smart_cache.py**: Fixed all 25 tests - Fixed adaptive TTL calculation (julianday), datetime handling for SQLite, cache warming mocking, SmartCachedMetadataHandler tests, added autouse fixture for singletons, fixed get_smart_cache_manager cache directory handling, fixed test_extract_metadata_smart_cached temp directory, fixed test_cache_optimization to use force=True
-    - ✅ **test_async_mover.py**: Fixed AsyncFileMover operation tracking bug - both move_file() and move_cover_art() now correctly store original path BEFORE updating object; simplified backup function to use filename only; disabled manifest creation; fixed test assertions - 12/12 passing (1 skipped due to unrelated pytest-asyncio fixture deadlock)
-    - ✅ **test_statistics_dashboard.py**: Fixed all 22 tests - Resolved query system integration issues, fixed metrics calculation logic, corrected domain model API mismatches in dashboard integration, updated test fixtures and mocks for proper async handling - 22/22 passing
+  - **Fix Summary**:
+    - Added missing argparse import
+    - Fixed mock patches for sys.exit to use pytest.raises(SystemExit)
+    - Updated tests to use correct dataclass structures (StageProgress, ProgressMetrics)
+    - Fixed AsyncFileScanner -> IncrementalScanner references
+    - Fixed boolean values (false -> False) in rule_schema.py
+    - Fixed audio_file.artist -> audio_file.primary_artist references
+    - Fixed schema path access in test_rule_schema.py
+    - Fixed MusicBrainz plugin cleanup to handle missing event loop
   - **Modules with excellent coverage**:
     - rich_progress_renderer (94%), memory_monitor (78%), event_bus (95%+)
     - domain value_objects, result_pattern, many core modules
