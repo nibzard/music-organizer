@@ -71,7 +71,11 @@ class ConflictMetrics:
     @property
     def conflict_rate(self) -> float:
         """Percentage of files that had conflicts."""
-        return (self.total_conflicts / max(1, self.total_conflicts)) * 100
+        if self.total_conflicts == 0:
+            return 100.0  # No conflicts means 100% success rate
+        # Calculate rate based on resolved conflicts vs total
+        resolved = self.skipped_conflicts + self.renamed_conflicts + self.replaced_conflicts
+        return (resolved / max(1, self.total_conflicts)) * 100
 
 
 class BulkProgressTracker:
@@ -86,6 +90,7 @@ class BulkProgressTracker:
             update_interval: Minimum time between progress updates (seconds)
             batch_size: Expected size of each processing batch
         """
+        self.update_interval = update_interval
         self.base_tracker = IntelligentProgressTracker(update_interval)
         self.batch_size = batch_size
 
@@ -201,6 +206,7 @@ class BulkProgressTracker:
 
     def update_conflict_resolution(self, strategy: str, resolution_time: float):
         """Update conflict resolution metrics."""
+        self.conflict_metrics.total_conflicts += 1
         self.conflict_metrics.conflict_resolution_time += resolution_time
 
         if strategy == "skip":

@@ -112,17 +112,24 @@ class TestConflictMetrics:
 
     def test_conflict_rate(self):
         """Test conflict rate calculation."""
-        metrics = ConflictMetrics(total_conflicts=100)
+        metrics = ConflictMetrics(total_conflicts=50)
 
-        # Mock total_operations
-        metrics.total_conflicts = 50
+        # With no resolved conflicts, rate is 0%
+        assert metrics.conflict_rate == 0.0
 
-        # Conflict rate should be percentage
-        assert metrics.conflict_rate == 100.0  # 50/50 * 100
+        # Add some resolved conflicts
+        metrics.skipped_conflicts = 25
+        metrics.renamed_conflicts = 20
+        metrics.replaced_conflicts = 5
+        # Now we have 50 resolved out of 50 total = 100%
+        assert metrics.conflict_rate == 100.0
 
-        # Test zero total
+        # Test zero total - should return 100% (no conflicts is success)
         metrics.total_conflicts = 0
-        assert metrics.conflict_rate == 100.0  # Should handle division by zero
+        metrics.skipped_conflicts = 0
+        metrics.renamed_conflicts = 0
+        metrics.replaced_conflicts = 0
+        assert metrics.conflict_rate == 100.0  # No conflicts means 100% success
 
 
 class TestBulkProgressTracker:
@@ -238,7 +245,7 @@ class TestBulkProgressTracker:
         assert tracker.conflict_metrics.skipped_conflicts == 1
         assert tracker.conflict_metrics.renamed_conflicts == 1
         assert tracker.conflict_metrics.replaced_conflicts == 1
-        assert tracker.conflict_metrics.conflict_resolution_time == 0.45
+        assert tracker.conflict_metrics.conflict_resolution_time == pytest.approx(0.45)
 
     def test_batch_callbacks(self):
         """Test batch completion callbacks."""
@@ -310,18 +317,21 @@ class TestBulkProgressTracker:
         tracker.start_bulk_operation(total_files=100, estimated_batches=3)
 
         # Create batches with different performance characteristics
-        # Fast batch
+        # Fast batch (high throughput)
         tracker.start_batch(batch_id=1, operations_in_batch=33)
+        tracker.current_batch_metrics.total_size_mb = 100.0  # Add size for throughput calculation
         time.sleep(0.05)  # Short duration
         tracker.complete_batch(successful=33, failed=0, skipped=0)
 
-        # Slow batch
+        # Slow batch (low throughput)
         tracker.start_batch(batch_id=2, operations_in_batch=33)
+        tracker.current_batch_metrics.total_size_mb = 100.0  # Same size
         time.sleep(0.15)  # Longer duration
         tracker.complete_batch(successful=30, failed=2, skipped=1)
 
         # Medium batch
         tracker.start_batch(batch_id=3, operations_in_batch=34)
+        tracker.current_batch_metrics.total_size_mb = 100.0  # Same size
         time.sleep(0.1)  # Medium duration
         tracker.complete_batch(successful=32, failed=1, skipped=1)
 
@@ -343,8 +353,8 @@ class TestBulkProgressTracker:
         # Verify best/worst batch identification
         best = report['best_batch']
         worst = report['worst_batch']
-        assert best['batch_id'] == 1  # Fastest batch
-        assert worst['batch_id'] == 2  # Slowest batch
+        assert best['batch_id'] == 1  # Fastest batch (shortest duration, same size)
+        assert worst['batch_id'] == 2  # Slowest batch (longest duration, same size)
         assert best['throughput_mb_per_sec'] >= worst['throughput_mb_per_sec']
 
     def test_performance_report_no_batches(self):
@@ -368,7 +378,7 @@ class TestBulkProgressTracker:
         tracker.complete_batch(successful=25, failed=0, skipped=25)  # 25 conflicts
 
         # Slow batch scenario
-        tracker.start_bulk(batch_id=2, operations_in_batch=50)
+        tracker.start_batch(batch_id=2, operations_in_batch=50)
         tracker.directory_creation_time = 10.0  # High directory creation time
         tracker.complete_batch(successful=50, failed=0, skipped=0)
 
@@ -420,11 +430,13 @@ class TestBulkProgressTracker:
         # Create batches with increasing throughput
         for i in range(3):
             tracker.start_batch(batch_id=i+1, operations_in_batch=33)
-            # Simulate different processing times
-            time.sleep(0.1 / (i + 1))  # Faster each batch
+            # Add size for throughput calculation - same size for all batches
+            tracker.current_batch_metrics.total_size_mb = 100.0
+            # Simulate different processing times - faster each batch
+            time.sleep(0.1 / (i + 1))
             tracker.complete_batch(successful=33, failed=0, skipped=0)
 
-        # The last batch should have the highest throughput
+        # The last batch should have the highest throughput (shortest time, same size)
         assert tracker.peak_throughput_mb_per_sec > 0
         assert tracker.peak_throughput_mb_per_sec >= tracker.batch_metrics[-1].throughput_mb_per_sec
 

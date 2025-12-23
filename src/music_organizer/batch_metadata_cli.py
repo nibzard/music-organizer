@@ -186,19 +186,19 @@ class BatchMetadataCLI:
         try:
             # Validate directory
             if not parsed_args.directory.exists():
-                self.console.error(f"Directory does not exist: {parsed_args.directory}")
+                self.console.print(f"Directory does not exist: {parsed_args.directory}", 'red')
                 return 1
 
             # Create operations
             operations = self._create_operations(parsed_args)
             if not operations:
-                self.console.error("No operations specified")
+                self.console.print("No operations specified", 'red')
                 return 1
 
             # Find files
             files = self._find_files(parsed_args.directory, parsed_args.filter)
             if not files:
-                self.console.error("No audio files found")
+                self.console.print("No audio files found", 'red')
                 return 1
 
             # Create config
@@ -220,10 +220,10 @@ class BatchMetadataCLI:
             return 0 if result.failed == 0 else 1
 
         except KeyboardInterrupt:
-            self.console.warning("\nOperation cancelled by user")
+            self.console.print("\nOperation cancelled by user", 'yellow')
             return 130
         except Exception as e:
-            self.console.error(f"Error: {e}")
+            self.console.print(f"Error: {e}", 'red')
             return 1
 
     def _create_operations(self, args: argparse.Namespace) -> List[MetadataOperation]:
@@ -314,7 +314,7 @@ class BatchMetadataCLI:
             return operations
 
         except Exception as e:
-            self.console.error(f"Failed to load operations file: {e}")
+            self.console.print(f"Failed to load operations file: {e}", 'red')
             return []
 
     def _find_files(self, directory: Path, pattern: Optional[str]) -> List[Path]:
@@ -386,15 +386,15 @@ class BatchMetadataCLI:
         if result.errors:
             self.console.print(f"\n{'Errors:':<20} {len(result.errors)}")
             for i, error in enumerate(result.errors[:10], 1):
-                self.console.error(f"  {i}. {error.get('file', 'Unknown')}: {error.get('error', 'Unknown error')}")
+                self.console.print(f"  {i}. {error.get('file', 'Unknown')}: {error.get('error', 'Unknown error')}", 'red')
             if len(result.errors) > 10:
-                self.console.warning(f"  ... and {len(result.errors) - 10} more errors")
+                self.console.print(f"  ... and {len(result.errors) - 10} more errors", 'yellow')
 
         # Warnings
         if result.warnings:
             self.console.print(f"\n{'Warnings:':<20} {len(result.warnings)}")
             for warning in result.warnings:
-                self.console.warning(f"  - {warning}")
+                self.console.print(f"  - {warning}", 'yellow')
 
         # Operations performed
         if result.operations_performed and not dry_run:

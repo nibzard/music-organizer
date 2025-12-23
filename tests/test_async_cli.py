@@ -203,9 +203,19 @@ class TestAsyncMusicCLI:
         with patch('pathlib.Path.exists', return_value=True):
             with patch('music_organizer.async_cli.AsyncMusicOrganizer') as mock_org_class:
                 mock_org = AsyncMock()
-                mock_org.scan_directory.side_effect = KeyboardInterrupt()
-                mock_org.__aenter__.return_value = mock_org
-                mock_org.__aexit__.return_value = None
+
+                # Create a proper async generator mock
+                async def mock_scanner():
+                    # First yield some results, then interrupt
+                    yield self.temp_source / "file1.mp3"
+                    yield self.temp_source / "file2.mp3"
+                    # Simulate interrupt during iteration
+                    raise KeyboardInterrupt()
+
+                # Set __aiter__ to return our async generator
+                mock_org.scan_directory = Mock(return_value=mock_scanner())
+                mock_org.__aenter__ = AsyncMock(return_value=mock_org)
+                mock_org.__aexit__ = AsyncMock(return_value=None)
                 mock_org_class.return_value = mock_org
 
                 result = await self.cli.organize(
@@ -246,9 +256,15 @@ class TestAsyncMusicCLI:
         with patch('pathlib.Path.exists', return_value=True):
             with patch('music_organizer.async_cli.AsyncMusicOrganizer') as mock_org_class:
                 mock_org = AsyncMock()
-                mock_org.scan_directory.return_value = []  # No files
-                mock_org.__aenter__.return_value = mock_org
-                mock_org.__aexit__.return_value = None
+
+                # Create an empty async generator
+                async def empty_scan():
+                    return
+                    yield  # Never reached
+
+                mock_org.scan_directory = Mock(return_value=empty_scan())
+                mock_org.__aenter__ = AsyncMock(return_value=mock_org)
+                mock_org.__aexit__ = AsyncMock(return_value=None)
                 mock_org_class.return_value = mock_org
 
                 result = await self.cli.scan(self.temp_source)
@@ -261,10 +277,16 @@ class TestAsyncMusicCLI:
         with patch('pathlib.Path.exists', return_value=True):
             with patch('music_organizer.async_cli.AsyncMusicOrganizer') as mock_org_class:
                 mock_org = AsyncMock()
-                mock_org.scan_directory.return_value = []
+
+                # Create an empty async generator
+                async def empty_scan():
+                    return
+                    yield  # Never reached
+
+                mock_org.scan_directory = Mock(return_value=empty_scan())
                 mock_org._get_category_name = Mock(return_value="Albums")
-                mock_org.__aenter__.return_value = mock_org
-                mock_org.__aexit__.return_value = None
+                mock_org.__aenter__ = AsyncMock(return_value=mock_org)
+                mock_org.__aexit__ = AsyncMock(return_value=None)
                 mock_org_class.return_value = mock_org
 
                 with patch('music_organizer.async_cli.MetadataHandler'):
@@ -275,7 +297,7 @@ class TestAsyncMusicCLI:
     @pytest.mark.asyncio
     async def test_cache_stats_command(self):
         """Test cache stats command."""
-        with patch('music_organizer.async_cli.get_cached_metadata_handler') as mock_get:
+        with patch('music_organizer.core.cached_metadata.get_cached_metadata_handler') as mock_get:
             mock_handler = Mock()
             mock_handler.get_cache_stats.return_value = {
                 'total_entries': 100,
@@ -296,7 +318,7 @@ class TestAsyncMusicCLI:
     @pytest.mark.asyncio
     async def test_cache_cleanup_command(self):
         """Test cache cleanup command."""
-        with patch('music_organizer.async_cli.get_cached_metadata_handler') as mock_get:
+        with patch('music_organizer.core.cached_metadata.get_cached_metadata_handler') as mock_get:
             mock_handler = Mock()
             mock_handler.cleanup_expired.return_value = 15
             mock_get.return_value = mock_handler
@@ -309,7 +331,7 @@ class TestAsyncMusicCLI:
     @pytest.mark.asyncio
     async def test_cache_clear_without_confirm(self):
         """Test cache clear without confirmation."""
-        with patch('music_organizer.async_cli.get_cached_metadata_handler') as mock_get:
+        with patch('music_organizer.core.cached_metadata.get_cached_metadata_handler') as mock_get:
             mock_handler = Mock()
             mock_get.return_value = mock_handler
 
@@ -321,7 +343,7 @@ class TestAsyncMusicCLI:
     @pytest.mark.asyncio
     async def test_cache_clear_with_confirm(self):
         """Test cache clear with confirmation."""
-        with patch('music_organizer.async_cli.get_cached_metadata_handler') as mock_get:
+        with patch('music_organizer.core.cached_metadata.get_cached_metadata_handler') as mock_get:
             mock_handler = Mock()
             mock_get.return_value = mock_handler
 
@@ -333,7 +355,7 @@ class TestAsyncMusicCLI:
     @pytest.mark.asyncio
     async def test_cache_unknown_command(self):
         """Test unknown cache command."""
-        with patch('music_organizer.async_cli.get_cached_metadata_handler') as mock_get:
+        with patch('music_organizer.core.cached_metadata.get_cached_metadata_handler') as mock_get:
             mock_handler = Mock()
             mock_get.return_value = mock_handler
 
@@ -351,7 +373,7 @@ class TestAsyncMusicCLI:
     @pytest.mark.asyncio
     async def test_handle_magic_mode_analyze_only(self):
         """Test magic mode analyze only."""
-        with patch('music_organizer.async_cli.MagicMusicOrganizer') as mock_magic_class:
+        with patch('music_organizer.core.magic_organizer.MagicMusicOrganizer') as mock_magic_class:
             mock_magic = AsyncMock()
             mock_magic.analyze_library_for_magic_mode.return_value = {
                 'recommended_strategy': 'bulk',
@@ -404,7 +426,7 @@ class TestAsyncMusicCLI:
     @pytest.mark.asyncio
     async def test_handle_magic_mode_exception(self):
         """Test magic mode with exception."""
-        with patch('music_organizer.async_cli.MagicMusicOrganizer') as mock_magic_class:
+        with patch('music_organizer.core.magic_organizer.MagicMusicOrganizer') as mock_magic_class:
             mock_magic = AsyncMock()
             mock_magic.initialize.side_effect = Exception("Magic error")
             mock_magic_class.return_value = mock_magic
@@ -514,10 +536,14 @@ class TestAsyncMusicCLI:
 class TestCreateAsyncCLI:
     """Test create_async_cli function."""
 
+    @patch('sys.argv', ['music-organize-async', '--help'])
     def test_parser_creation(self):
         """Test parser is created."""
-        parser = create_async_cli()
-        assert isinstance(parser, int) or isinstance(parser, argparse.ArgumentParser)
+        # Mock sys.exit to prevent actual exit
+        with patch('sys.exit') as mock_exit:
+            create_async_cli()
+            # Should call sys.exit when --help is provided
+            mock_exit.assert_called_once()
 
     def test_parser_organize_command(self):
         """Test parsing organize command."""
@@ -563,8 +589,11 @@ class TestMainFunction:
     def test_main_entry_point(self):
         """Test main function entry point."""
         with patch('music_organizer.async_cli.create_async_cli', return_value=0):
-            result = main()
-            assert result == 0
+            # main() calls sys.exit() which raises SystemExit
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+            # SystemExit.code should be 0 (success)
+            assert exc_info.value.code == 0
 
 
 if __name__ == '__main__':
