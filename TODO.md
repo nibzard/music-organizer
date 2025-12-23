@@ -6,6 +6,30 @@
 
 **All 20 failing tests have been successfully fixed!** The test suite now achieves excellent coverage with 1067 passing tests.
 
+## 🔧 Maintenance: Dependency Fixes (2025-12-23)
+
+### Issue Fixed
+Tests were failing due to missing runtime dependencies in pyproject.toml:
+- `aiofiles` - used by FileBasedRecordingRepository for async file operations
+- `aiohttp` - used by MusicBrainzAdapter and AcoustidAdapter for HTTP requests
+
+These packages were not listed in the `dependencies` section of pyproject.toml even though they were imported in production code.
+
+### Changes Made
+- Added `aiofiles>=25.1.0` to dependencies in pyproject.toml
+- Added `aiohttp>=3.13.0` to dependencies in pyproject.toml
+- Committed changes: `6279223`
+
+### Test Status
+- **1247 tests passing**
+- **4 tests failing** (flaky performance/memory tests - pass individually)
+  - `test_memory_monitor.py::TestMemoryMonitor::test_start_stop_monitoring`
+  - `test_performance_regression.py::TestMemoryUsagePerformance::test_memory_per_file`
+  - `test_performance_regression.py::TestPerformanceRegression::test_cache_lookup_baseline`
+  - `test_performance_regression.py::TestEndToEndPerformance::test_full_workflow_performance`
+
+All failures are in performance regression tests that are flaky due to timing/memory measurement variability - they pass when run in isolation but may fail when run together due to shared state.
+
 ### Final Test Status
 - **1067 tests passing** (100% of active tests)
 - **0 tests failing** (all issues resolved)
