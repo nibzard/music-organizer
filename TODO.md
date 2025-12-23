@@ -734,8 +734,8 @@ music-batch-metadata /music/library --workers 8 --batch-size 200
 ### Documentation
 - [x] 🟢 Create comprehensive API documentation with examples (docs/api-reference.md)
 - [x] ✅ Write plugin development guide with tutorials
-- [ ] 🟡 Add performance tuning guide
-- [ ] 🟢 Create troubleshooting FAQ
+- [x] ✅ Add performance tuning guide (docs/performance-tuning.md) - Covers worker configuration, caching strategies, memory tuning, bulk operations, library size guidelines, performance monitoring, and troubleshooting
+- [x] ✅ Create troubleshooting FAQ (docs/troubleshooting.md) - Comprehensive FAQ covering installation issues, performance problems, common errors, file organization issues, metadata problems, plugin issues, and CLI usage
 
 ### Distribution
 - [ ] 🟡 Create single-file distribution with minimal dependencies
