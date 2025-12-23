@@ -99,25 +99,28 @@ class DuplicateQualityScorer:
         score = 0.0
 
         # Format quality (40% weight)
-        format_score = self.format_priority.get(audio_file.format.value, 0)
+        format_score = self.format_priority.get(audio_file.file_type.lower(), 0)
         score += format_score * 0.4
 
-        # Bitrate quality (25% weight)
-        if hasattr(audio_file.metadata, 'bitrate') and audio_file.metadata.bitrate:
+        # Bitrate quality (25% weight) - from metadata dict if available
+        metadata = audio_file.metadata if isinstance(audio_file.metadata, dict) else {}
+        bitrate = metadata.get('bitrate')
+        if bitrate:
             # Normalize bitrate (assuming max 3200 kbps for high-quality FLAC)
-            bitrate_score = min(audio_file.metadata.bitrate / 3200, 1.0) * 10
+            bitrate_score = min(bitrate / 3200, 1.0) * 10
             score += bitrate_score * 0.25
 
         # Sample rate quality (15% weight)
-        if hasattr(audio_file.metadata, 'sample_rate') and audio_file.metadata.sample_rate:
+        sample_rate = metadata.get('sample_rate')
+        if sample_rate:
             # Normalize sample rate (assuming max 192000 Hz)
-            sample_rate_score = min(audio_file.metadata.sample_rate / 192000, 1.0) * 10
+            sample_rate_score = min(sample_rate / 192000, 1.0) * 10
             score += sample_rate_score * 0.15
 
         # Metadata completeness (10% weight)
         metadata_fields = ['title', 'artists', 'album', 'year', 'genre', 'track_number']
         metadata_score = sum(1 for field in metadata_fields
-                           if getattr(audio_file.metadata, field, None))
+                           if getattr(audio_file, field, None) or metadata.get(field))
         metadata_score = (metadata_score / len(metadata_fields)) * 10
         score += metadata_score * 0.10
 

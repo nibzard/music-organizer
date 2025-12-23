@@ -620,10 +620,11 @@ music-batch-metadata /music/library --workers 8 --batch-size 200
 - [x] ✅ Added tests for rich_progress_renderer module (0% → 94% coverage)
 - [x] ✅ **COMPLETED**: Added tests for memory_monitor module (0% → 78% coverage) - 22/22 PASSING
 - [x] ✅ **FIXED kw_only dataclass issue** - removed problematic kw_only param from base classes
-- [ ] 🔴 **IN PROGRESS**: Achieve 95% test coverage (major progress - 1050+ tests passing!)
-  - **Current Status**: 1050+ passing tests (up from 934+)
-  - **NEXT TARGET**: test_organization_preview.py (15 failures - highest priority)
+- [ ] 🔴 **IN PROGRESS**: Achieve 95% test coverage (major progress - 1072+ tests passing!)
+  - **Current Status**: 1072+ passing tests (up from 934+)
+  - **NEXT TARGET**: test_interactive_duplicate_resolver.py (15 failures - highest priority)
   - **Latest completed fixes** (2024-12-23):
+    - ✅ **test_organization_preview.py**: 22/22 PASSING - Fixed preview initialization, mock patches
     - ✅ **test_memory_monitor.py**: 22/22 PASSING - All tests now passing
     - ✅ **test_rollback_cli.py**: 24/24 passing - Fixed missing argparse import, sys.exit mock patches
     - ✅ **test_rich_progress_renderer.py**: 18/18 passing - Fixed dataclass structures (StageProgress, ProgressMetrics)

@@ -75,31 +75,31 @@ class DuplicateResolverUI:
             size_str = "Unknown size"
 
         # Format bitrate and sample rate
-        metadata = audio_file.metadata
-        bitrate = f"{metadata.bitrate} kbps" if hasattr(metadata, 'bitrate') and metadata.bitrate else "Unknown"
-        sample_rate = f"{metadata.sample_rate} Hz" if hasattr(metadata, 'sample_rate') and metadata.sample_rate else "Unknown"
+        metadata = audio_file.metadata if isinstance(audio_file.metadata, dict) else {}
+        bitrate = f"{metadata.get('bitrate')} kbps" if metadata.get('bitrate') else "Unknown"
+        sample_rate = f"{metadata.get('sample_rate')} Hz" if metadata.get('sample_rate') else "Unknown"
 
         # Print header
         print(f"\n{color}{Colors.BOLD}{indicator}{Colors.RESET}")
         print(f"{Colors.DIM}{'─' * (len(indicator) - 4)}{'─' * (self.terminal_width - len(indicator) - 4)}{Colors.RESET}")
         print(f"{Colors.BOLD}Path:{Colors.RESET} {audio_file.path}")
-        print(f"{Colors.BOLD}Size:{Colors.RESET} {size_str} | {Colors.BOLD}Format:{Colors.RESET} {audio_file.format.value.upper()}")
+        print(f"{Colors.BOLD}Size:{Colors.RESET} {size_str} | {Colors.BOLD}Format:{Colors.RESET} {audio_file.file_type.upper()}")
         print(f"{Colors.BOLD}Quality:{Colors.RESET} {bitrate} | {sample_rate}")
 
         # Print metadata
         print(f"\n{Colors.BOLD}Metadata:{Colors.RESET}")
-        if metadata.title:
-            print(f"  Title: {metadata.title}")
-        if metadata.artists:
-            print(f"  Artist: {', '.join(str(a) for a in metadata.artists)}")
-        if metadata.album:
-            print(f"  Album: {metadata.album}")
-        if metadata.year:
-            print(f"  Year: {metadata.year}")
-        if metadata.genre:
-            print(f"  Genre: {metadata.genre}")
-        if metadata.track_number:
-            print(f"  Track: {metadata.track_number}")
+        if audio_file.title:
+            print(f"  Title: {audio_file.title}")
+        if audio_file.artists:
+            print(f"  Artist: {', '.join(str(a) for a in audio_file.artists)}")
+        if audio_file.album:
+            print(f"  Album: {audio_file.album}")
+        if audio_file.year:
+            print(f"  Year: {audio_file.year}")
+        if audio_file.genre:
+            print(f"  Genre: {audio_file.genre}")
+        if audio_file.track_number:
+            print(f"  Track: {audio_file.track_number}")
 
     def _print_comparison(self, files: List[AudioFile], scores: List[float]):
         """Print a side-by-side comparison of files."""
@@ -117,13 +117,13 @@ class DuplicateResolverUI:
 
         # Compare key attributes
         comparisons = [
-            ("Format", file1.format.value.upper(), file2.format.value.upper(), better_idx == 0),
+            ("Format", file1.file_type.upper(), file2.file_type.upper(), better_idx == 0),
             ("Size", f"{file1.path.stat().st_size / (1024*1024):.1f} MB",
                    f"{file2.path.stat().st_size / (1024*1024):.1f} MB", better_idx == 0),
-            ("Bitrate", f"{file1.metadata.bitrate} kbps" if file1.metadata.bitrate else "Unknown",
-                       f"{file2.metadata.bitrate} kbps" if file2.metadata.bitrate else "Unknown", better_idx == 0),
-            ("Sample Rate", f"{file1.metadata.sample_rate} Hz" if file1.metadata.sample_rate else "Unknown",
-                          f"{file2.metadata.sample_rate} Hz" if file2.metadata.sample_rate else "Unknown", better_idx == 0),
+            ("Bitrate", f"{file1.metadata.get('bitrate')} kbps" if isinstance(file1.metadata, dict) and file1.metadata.get('bitrate') else "Unknown",
+                       f"{file2.metadata.get('bitrate')} kbps" if isinstance(file2.metadata, dict) and file2.metadata.get('bitrate') else "Unknown", better_idx == 0),
+            ("Sample Rate", f"{file1.metadata.get('sample_rate')} Hz" if isinstance(file1.metadata, dict) and file1.metadata.get('sample_rate') else "Unknown",
+                          f"{file2.metadata.get('sample_rate')} Hz" if isinstance(file2.metadata, dict) and file2.metadata.get('sample_rate') else "Unknown", better_idx == 0),
         ]
 
         # Print comparison table
