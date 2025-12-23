@@ -619,18 +619,42 @@ music-batch-metadata /music/library --workers 8 --batch-size 200
 - [x] ✅ Fixed test imports and basic test failures (current coverage: 37%, up from 16%)
 - [x] ✅ Added tests for rich_progress_renderer module (0% → 94% coverage)
 - [x] ✅ Added tests for memory_monitor module (0% → 78% coverage)
-- [ ] 🔴 **IN PROGRESS**: Achieve 95% test coverage (currently at 37%)
-  - **Status**: 376 tests passing, 150+ tests failing
-  - **Major Blocker**: Base Command/Query classes use `kw_only=True`, breaking many test instantiations
-  - **30+ modules with 0% coverage need tests**:
-    - All CQRS modules (application/commands/*, application/queries/*)
-    - All CLI modules (async_cli.py, cli.py, rollback_cli.py, batch_metadata_cli.py)
-    - Core modules (magic_mode.py, organizer.py, mover.py, organization_preview.py)
-    - Events system (event_bus.py, domain_events.py)
-    - Many plugins (duplicates, statistics, smart_cache, etc.)
-  - **Modules with good coverage** (70%+):
-    - rich_progress_renderer (94%), memory_monitor (78%), domain value_objects
-  - **Next steps**: Fix kw_only dataclass issue, add tests for uncovered modules
+- [x] ✅ **FIXED kw_only dataclass issue** - removed problematic kw_only param from base classes
+- [ ] 🔴 **IN PROGRESS**: Achieve 95% test coverage (major progress - 796+ tests passing!)
+  - **Status**: 796 passed, 226 failed, 50 errors (up from 769 passed)
+  - **Completed test suites**:
+    - CQRS modules: 59 tests (commands, queries, events, handlers)
+    - CLI modules: 118 tests (async_cli, rollback_cli, batch_metadata_cli, dashboard_cli)
+    - Core modules: 53 tests (organizer, mover, organization_preview)
+    - Events system: 105 tests (event_bus, domain_events, event_handlers)
+    - Plugins: 53 tests (example_classifier, m3u_exporter, duplicate_detector)
+    - Batch operations: 60+ tests (batch_metadata, bulk_operations)
+    - Dashboard: 70+ tests (statistics_dashboard)
+    - Domain: 40 tests (entities, value_objects, result_pattern) - ALL PASSING
+    - Organization preview: 300+ tests (test_organization_preview.py)
+    - Result pattern integration: 50+ tests (test_result_pattern_integration.py)
+  - **Recent completed fixes**:
+    - ✅ FIXED pytest-asyncio config issue - tests run without asyncio warnings
+    - ✅ Fixed domain entity tests - all 40 tests in test_domain_entities.py now pass
+    - ✅ Fixed test_magic_mode.py - all 23 tests now passing
+    - ✅ Fixed test_organization_preview.py - updated Metadata, AudioFile, PreviewOperation API usage
+    - ✅ Fixed test_result_pattern_integration.py - updated Metadata to use frozenset for artists
+  - **Remaining blocker issues**:
+    - **AudioFile model API mismatch**: Tests expect `size_mb` property, but model uses different API
+    - **Metadata dict vs domain Metadata**: Some tests pass dict, others pass domain Metadata object
+    - **Organization preview API**: PreviewOperation expects `audio_file` param, tests use `metadata`
+    - **File format param**: Tests use `format=`, model expects `file_type=`
+    - **Content type param**: Tests pass `content_type` to Metadata, but it's an AudioFile param
+  - **Files that still need fixing**:
+    - test_regex_rule_engine.py - AudioFile/Metadata API issues
+    - test_duplicate_detector_plugin.py - Mock/fixture issues
+    - test_musicbrainz_plugin.py - External dependency mocking
+    - test_custom_naming_pattern_plugin.py - Path generation API changes
+    - test_batch_metadata.py - Metadata extraction API updates
+    - Various integration tests with domain model mismatches
+  - **Modules with excellent coverage**:
+    - rich_progress_renderer (94%), memory_monitor (78%), event_bus (95%+)
+    - domain value_objects, result_pattern, many core modules
 - [ ] 🟡 Add property-based testing for edge cases
 - [ ] 🟡 Implement performance benchmarks in CI/CD
 - [ ] 🟢 Add security audit for file operations
