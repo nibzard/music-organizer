@@ -198,7 +198,7 @@ def as_result(fn: Callable[..., T]) -> Callable[..., Result[T, Exception]]:
     return wrapper
 
 
-async def as_result_async(fn: Callable[..., T]) -> Callable[..., Result[T, Exception]]:
+def as_result_async(fn: Callable[..., T]) -> Callable[..., Result[T, Exception]]:
     """Decorator to convert async function that raises exceptions to return Result."""
     @wraps(fn)
     async def wrapper(*args, **kwargs) -> Result[T, Exception]:

@@ -21,6 +21,14 @@ from music_organizer.models.config import Config
 from music_organizer.exceptions import MusicOrganizerError
 
 
+def async_generator(items):
+    """Helper to create an async generator from a list."""
+    async def gen():
+        for item in items:
+            yield item
+    return gen()
+
+
 class TestOrganizeCommandAsync:
     """Test async organize command."""
 
@@ -54,19 +62,19 @@ class TestOrganizeCommandAsync:
             )
 
             with patch('music_organizer.cli.AsyncMusicOrganizer') as mock_org_class:
-                mock_org = AsyncMock()
-                mock_org.get_scan_info.return_value = {'has_history': False}
-                mock_org.scan_directory.return_value = []
-                mock_org.organize_files.return_value = {
+                mock_org = Mock()
+                mock_org.get_scan_info = Mock(return_value={'has_history': False})
+                mock_org.scan_directory = Mock(return_value=async_generator([]))
+                mock_org.organize_files = AsyncMock(return_value={
                     'processed': 0,
                     'moved': 0,
                     'skipped': 0,
                     'by_category': {},
                     'errors': []
-                }
+                })
                 mock_org_class.return_value = mock_org
 
-                with patch('music_organizer.cli.SimpleConsole'):
+                with patch('music_organizer.cli.console.confirm', return_value=True):
                     result = await organize_command_async(args)
                     assert result == 0
 
@@ -87,19 +95,19 @@ class TestOrganizeCommandAsync:
         )
 
         with patch('music_organizer.cli.AsyncMusicOrganizer') as mock_org_class:
-            mock_org = AsyncMock()
-            mock_org.get_scan_info.return_value = {'has_history': False}
-            mock_org.scan_directory.return_value = []
-            mock_org.organize_files.return_value = {
+            mock_org = Mock()
+            mock_org.get_scan_info = Mock(return_value={'has_history': False})
+            mock_org.scan_directory = Mock(return_value=async_generator([]))
+            mock_org.organize_files = AsyncMock(return_value={
                 'processed': 0,
                 'moved': 0,
                 'skipped': 0,
                 'by_category': {},
                 'errors': []
-            }
+            })
             mock_org_class.return_value = mock_org
 
-            with patch('music_organizer.cli.SimpleConsole'):
+            with patch('music_organizer.cli.console.confirm', return_value=True):
                 result = await organize_command_async(args)
                 assert result == 0
 
@@ -120,22 +128,22 @@ class TestOrganizeCommandAsync:
         )
 
         with patch('music_organizer.cli.AsyncMusicOrganizer') as mock_org_class:
-            mock_org = AsyncMock()
-            mock_org.get_scan_info.return_value = {
+            mock_org = Mock()
+            mock_org.get_scan_info = Mock(return_value={
                 'has_history': True,
                 'last_scan': '2024-01-01T12:00:00'
-            }
-            mock_org.scan_directory_incremental.return_value = []
-            mock_org.organize_files.return_value = {
+            })
+            mock_org.scan_directory_incremental = Mock(return_value=async_generator([]))
+            mock_org.organize_files = AsyncMock(return_value={
                 'processed': 0,
                 'moved': 0,
                 'skipped': 0,
                 'by_category': {},
                 'errors': []
-            }
+            })
             mock_org_class.return_value = mock_org
 
-            with patch('music_organizer.cli.SimpleConsole'):
+            with patch('music_organizer.cli.console.confirm', return_value=True):
                 result = await organize_command_async(args)
                 assert result == 0
 
@@ -156,19 +164,19 @@ class TestOrganizeCommandAsync:
         )
 
         with patch('music_organizer.cli.AsyncMusicOrganizer') as mock_org_class:
-            mock_org = AsyncMock()
-            mock_org.get_scan_info.return_value = {'has_history': True}
-            mock_org.scan_directory_incremental.return_value = []
-            mock_org.organize_files.return_value = {
+            mock_org = Mock()
+            mock_org.get_scan_info = Mock(return_value={'has_history': True})
+            mock_org.scan_directory_incremental = Mock(return_value=async_generator([]))
+            mock_org.organize_files = AsyncMock(return_value={
                 'processed': 0,
                 'moved': 0,
                 'skipped': 0,
                 'by_category': {},
                 'errors': []
-            }
+            })
             mock_org_class.return_value = mock_org
 
-            with patch('music_organizer.cli.SimpleConsole'):
+            with patch('music_organizer.cli.console.confirm', return_value=True):
                 result = await organize_command_async(args)
                 assert result == 0
 
@@ -189,25 +197,22 @@ class TestOrganizeCommandAsync:
         )
 
         with patch('music_organizer.cli.AsyncMusicOrganizer') as mock_org_class:
-            mock_org = AsyncMock()
-            mock_org.get_scan_info.return_value = {'has_history': False}
-
-            # Return some files
-            async def mock_scan():
-                yield Path("/tmp/file1.mp3")
-                yield Path("/tmp/file2.mp3")
-
-            mock_org.scan_directory.return_value = mock_scan()
-            mock_org.organize_files.return_value = {
+            mock_org = Mock()
+            mock_org.get_scan_info = Mock(return_value={'has_history': False})
+            mock_org.scan_directory = Mock(return_value=async_generator([
+                Path("/tmp/file1.mp3"),
+                Path("/tmp/file2.mp3")
+            ]))
+            mock_org.organize_files = AsyncMock(return_value={
                 'processed': 2,
                 'moved': 2,
                 'skipped': 0,
                 'by_category': {'Albums': 2},
                 'errors': []
-            }
+            })
             mock_org_class.return_value = mock_org
 
-            with patch('music_organizer.cli.SimpleConsole'):
+            with patch('music_organizer.cli.console.confirm', return_value=True):
                 result = await organize_command_async(args)
                 assert result == 0
 
@@ -228,11 +233,11 @@ class TestOrganizeCommandAsync:
         )
 
         with patch('music_organizer.cli.AsyncMusicOrganizer') as mock_org_class:
-            mock_org = AsyncMock()
-            mock_org.get_scan_info.side_effect = MusicOrganizerError("Test error")
+            mock_org = Mock()
+            mock_org.get_scan_info = Mock(side_effect=MusicOrganizerError("Test error"))
             mock_org_class.return_value = mock_org
 
-            with patch('music_organizer.cli.SimpleConsole'):
+            with patch('music_organizer.cli.console.confirm', return_value=True):
                 result = await organize_command_async(args)
                 assert result == 1
 
@@ -253,11 +258,11 @@ class TestOrganizeCommandAsync:
         )
 
         with patch('music_organizer.cli.AsyncMusicOrganizer') as mock_org_class:
-            mock_org = AsyncMock()
-            mock_org.get_scan_info.side_effect = Exception("Unexpected error")
+            mock_org = Mock()
+            mock_org.get_scan_info = Mock(side_effect=Exception("Unexpected error"))
             mock_org_class.return_value = mock_org
 
-            with patch('music_organizer.cli.SimpleConsole'):
+            with patch('music_organizer.cli.console.confirm', return_value=True):
                 with patch('traceback.format_exc', return_value="Traceback..."):
                     result = await organize_command_async(args)
                     assert result == 1
@@ -265,6 +270,11 @@ class TestOrganizeCommandAsync:
 
 class TestOrganizeCommand:
     """Test sync wrapper for organize command."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.temp_source = Path("/tmp/test_source")
+        self.temp_target = Path("/tmp/test_target")
 
     def test_organize_command_wrapper(self):
         """Test the sync wrapper calls async version."""
@@ -453,18 +463,19 @@ class TestValidateCommand:
             directory=self.temp_dir
         )
 
-        with patch('music_organizer.cli.DirectoryOrganizer') as mock_dir_class:
-            mock_dir_class.validate_structure.return_value = {
+        with patch('music_organizer.cli.DirectoryOrganizer.validate_structure') as mock_validate:
+            mock_validate.return_value = {
                 'Albums': True,
                 'Live': True,
                 'Compilations': True
             }
-            mock_dir_class.get_empty_directories.return_value = []
-            mock_dir_class.return_value = mock_dir_class
 
-            with patch('music_organizer.cli.SimpleConsole'):
-                result = validate_command(args)
-                assert result == 0
+            with patch('music_organizer.cli.DirectoryOrganizer.get_empty_directories') as mock_empty:
+                mock_empty.return_value = []
+
+                with patch('music_organizer.cli.SimpleConsole'):
+                    result = validate_command(args)
+                    assert result == 0
 
     def test_validate_with_empty_directories(self):
         """Test validation with empty directories."""
@@ -472,17 +483,18 @@ class TestValidateCommand:
             directory=self.temp_dir
         )
 
-        with patch('music_organizer.cli.DirectoryOrganizer') as mock_dir_class:
-            mock_dir_class.validate_structure.return_value = {
+        with patch('music_organizer.cli.DirectoryOrganizer.validate_structure') as mock_validate:
+            mock_validate.return_value = {
                 'Albums': True,
                 'Live': False
             }
-            mock_dir_class.get_empty_directories.return_value = [Path("/empty1")]
-            mock_dir_class.return_value = mock_dir_class
 
-            with patch('music_organizer.cli.SimpleConsole'):
-                result = validate_command(args)
-                assert result == 0
+            with patch('music_organizer.cli.DirectoryOrganizer.get_empty_directories') as mock_empty:
+                mock_empty.return_value = [Path("/empty1")]
+
+                with patch('music_organizer.cli.console.confirm', return_value=False):
+                    result = validate_command(args)
+                    assert result == 0
 
     def test_validate_with_misplaced_files(self):
         """Test validation with misplaced files."""
@@ -490,21 +502,22 @@ class TestValidateCommand:
             directory=self.temp_dir
         )
 
-        with patch('music_organizer.cli.DirectoryOrganizer') as mock_dir_class:
-            mock_dir_class.validate_structure.return_value = {}
-            mock_dir_class.get_empty_directories.return_value = []
-            mock_dir_class.return_value = mock_dir_class
+        with patch('music_organizer.cli.DirectoryOrganizer.validate_structure') as mock_validate:
+            mock_validate.return_value = {}
 
-            with patch('music_organizer.cli.SimpleConsole'):
-                with patch('pathlib.Path.iterdir') as mock_iter:
-                    mock_file = Mock()
-                    mock_file.is_file.return_value = True
-                    mock_file.suffix.lower = '.mp3'
-                    mock_file.name = "test.mp3"
-                    mock_iter.return_value = [mock_file]
+            with patch('music_organizer.cli.DirectoryOrganizer.get_empty_directories') as mock_empty:
+                mock_empty.return_value = []
 
-                    result = validate_command(args)
-                    assert result == 0
+                with patch('music_organizer.cli.console.confirm', return_value=False):
+                    with patch('pathlib.Path.iterdir') as mock_iter:
+                        mock_file = Mock()
+                        mock_file.is_file.return_value = True
+                        mock_file.suffix.lower.return_value = '.mp3'
+                        mock_file.name = "test.mp3"
+                        mock_iter.return_value = iter([mock_file])
+
+                        result = validate_command(args)
+                        assert result == 0
 
 
 class TestHelperFunctions:
@@ -514,12 +527,11 @@ class TestHelperFunctions:
         """Test getting category name from content type."""
         from music_organizer.models.audio_file import ContentType
 
-        assert _get_category_name(ContentType.ALBUM) == 'Albums'
+        assert _get_category_name(ContentType.STUDIO) == 'Albums'
         assert _get_category_name(ContentType.LIVE) == 'Live'
         assert _get_category_name(ContentType.COLLABORATION) == 'Collaborations'
         assert _get_category_name(ContentType.COMPILATION) == 'Compilations'
-        assert _get_category_name(ContentType.RARITY) == 'Rarities'
-        assert _get_category_name(ContentType.UNKNOWN) == 'Unknown'
+        assert _get_category_name(None) == 'Unknown'
 
     def test_organize_with_progress(self):
         """Test organizing with progress tracking."""

@@ -457,12 +457,10 @@ def _get_category_name(content_type):
     """Get category name from content type."""
     from .models.audio_file import ContentType
     mapping = {
-        ContentType.ALBUM: 'Albums',
+        ContentType.STUDIO: 'Albums',
         ContentType.LIVE: 'Live',
         ContentType.COLLABORATION: 'Collaborations',
         ContentType.COMPILATION: 'Compilations',
-        ContentType.RARITY: 'Rarities',
-        ContentType.UNKNOWN: 'Unknown'
     }
     return mapping.get(content_type, 'Unknown')
 

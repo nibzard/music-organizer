@@ -53,6 +53,14 @@ class Config:
     metadata: MetadataConfig = field(default_factory=MetadataConfig)
     file_operations: FileOperationsConfig = field(default_factory=FileOperationsConfig)
 
+    @classmethod
+    def default(cls) -> "Config":
+        """Create a default configuration with placeholder paths."""
+        return cls(
+            source_directory=Path("."),
+            target_directory=Path(".")
+        )
+
 
 def _dataclass_to_dict(obj):
     """Convert dataclass to dict recursively."""

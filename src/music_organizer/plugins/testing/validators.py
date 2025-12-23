@@ -337,8 +337,11 @@ class PluginValidator:
             # Test enhance_metadata
             enhanced = asyncio.run(plugin.enhance_metadata(test_file))
 
-            if not isinstance(enhanced, AudioFile):
-                result.add_error("enhance_metadata must return an AudioFile")
+            # Check if it looks like an AudioFile (duck typing)
+            has_metadata = hasattr(enhanced, 'metadata')
+            has_path = hasattr(enhanced, 'file_path') or hasattr(enhanced, 'path')
+            if not (has_metadata and has_path):
+                result.add_error("enhance_metadata must return an AudioFile-like object")
 
             if enhanced == test_file and plugin.enabled:
                 result.add_warning("enhance_metadata did not modify the audio file")

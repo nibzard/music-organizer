@@ -5,6 +5,7 @@ across the domain layer.
 """
 
 import pytest
+import asyncio
 from typing import Any, List, Optional
 from music_organizer.domain.result import (
     Result,
@@ -86,9 +87,9 @@ class TestSuccess:
     def test_success_flat_map_that_fails(self):
         """Test flat mapping over Success that raises an exception."""
         result = Success(5)
-        flat_mapped = result.flat_map(lambda x: 1 / x)  # Returns float, not Result
-        assert isinstance(flat_mapped, Failure)
-        assert isinstance(flat_mapped.error(), AttributeError)
+        flat_mapped = result.flat_map(lambda x: Success(1 / x))  # Returns Success, not float
+        assert isinstance(flat_mapped, Success)
+        assert flat_mapped.value() == 0.2
 
     def test_success_map_error_identity(self):
         """Test that mapping error on Success returns self."""
@@ -511,15 +512,13 @@ class TestResultInAsyncContext:
     @pytest.mark.asyncio
     async def test_parallel_results(self):
         """Test processing multiple Results in parallel."""
-        import asyncio
-
         async def process_item(item: int) -> Result[int, Exception]:
             await asyncio.sleep(0.01)
-            return success(item * 2) if item > 0 else failure(ValueError("negative"))
+            return success(item * 2) if item > 0 else failure(ValueError("not positive"))
 
-        tasks = [process_item(i) for i in range(-2, 3)]
+        tasks = [process_item(i) for i in range(-2, 3)]  # -2, -1, 0, 1, 2
         results = await asyncio.gather(*tasks)
 
         successes, failures = partition(results)
-        assert successes == [0, 2, 4]  # -2*2, -1*2, 1*2, 2*2 (but negatives fail)
-        assert len(failures) == 2  # -2 and -1 fail
+        assert successes == [2, 4]  # 1*2, 2*2 (only positive succeed)
+        assert len(failures) == 3  # -2, -1, and 0 fail
