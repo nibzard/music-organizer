@@ -25,6 +25,15 @@ from .mood_classifier import (
     get_mood_description,
     get_mood_from_valence_energy,
 )
+from .acoustic_similarity import (
+    AcousticSimilarityAnalyzer,
+    AcousticSimilarityError,
+    ChromaCache,
+    SimilarityResult,
+    SimilarityBatchResult,
+    BatchAcousticSimilarityAnalyzer,
+    is_available as acoustic_similarity_available,
+)
 
 __all__ = [
     "BaseModel",
@@ -46,4 +55,11 @@ __all__ = [
     "classify_mood",
     "get_mood_description",
     "get_mood_from_valence_energy",
+    "AcousticSimilarityAnalyzer",
+    "AcousticSimilarityError",
+    "ChromaCache",
+    "SimilarityResult",
+    "SimilarityBatchResult",
+    "BatchAcousticSimilarityAnalyzer",
+    "acoustic_similarity_available",
 ]

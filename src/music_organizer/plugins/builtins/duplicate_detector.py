@@ -1,4 +1,4 @@
-"""Duplicate detection plugin with audio fingerprinting."""
+"""Duplicate detection plugin with audio fingerprinting and chroma-based similarity."""
 
 import hashlib
 import struct
@@ -12,6 +12,18 @@ from ..base import ClassificationPlugin, PluginInfo
 from ..config import PluginConfigSchema, ConfigOption, create_classification_plugin_schema
 from ...models.audio_file import AudioFile
 
+# Import acoustic similarity for chroma-based cover detection
+try:
+    from music_organizer.ml.acoustic_similarity import (
+        AcousticSimilarityAnalyzer,
+        ChromaCache,
+        SimilarityResult,
+        is_available as acoustic_available,
+    )
+    ACOUSTIC_AVAILABLE = acoustic_available()
+except ImportError:
+    ACOUSTIC_AVAILABLE = False
+
 
 class DuplicateDetectorPlugin(ClassificationPlugin):
     """Detect duplicate audio files using multiple strategies."""
@@ -24,12 +36,30 @@ class DuplicateDetectorPlugin(ClassificationPlugin):
         self._audio_fingerprints: Dict[str, List[str]] = defaultdict(list)
         self._processed_files: Set[str] = set()
 
+        # Acoustic similarity components
+        self._chroma_cache: Optional[ChromaCache] = None
+        self._chroma_features: Dict[str, Tuple] = {}
+        self._acoustic_analyzer: Optional[AcousticSimilarityAnalyzer] = None
+
+        # Initialize acoustic similarity if enabled and available
+        if self._should_use_acoustic():
+            self._chroma_cache = ChromaCache()
+            self._acoustic_analyzer = AcousticSimilarityAnalyzer(cache=self._chroma_cache)
+
+    def _should_use_acoustic(self) -> bool:
+        """Check if acoustic similarity should be used."""
+        strategies = self.config.get('strategies', ['metadata', 'file_hash', 'audio_fingerprint'])
+        return (
+            ACOUSTIC_AVAILABLE and
+            'chroma_similarity' in strategies
+        )
+
     @property
     def info(self) -> PluginInfo:
         return PluginInfo(
             name="duplicate_detector",
-            version="1.0.0",
-            description="Detect duplicate audio files using audio fingerprinting and metadata comparison",
+            version="1.1.0",
+            description="Detect duplicate audio files using audio fingerprinting, chroma-based similarity, and metadata comparison. Includes cover song detection.",
             author="Music Organizer Team",
             dependencies=[],
         )
@@ -40,6 +70,12 @@ class DuplicateDetectorPlugin(ClassificationPlugin):
         self._metadata_hashes.clear()
         self._audio_fingerprints.clear()
         self._processed_files.clear()
+        self._chroma_features.clear()
+
+        # Re-initialize acoustic analyzer if needed
+        if self._should_use_acoustic() and self._acoustic_analyzer is None:
+            self._chroma_cache = ChromaCache()
+            self._acoustic_analyzer = AcousticSimilarityAnalyzer(cache=self._chroma_cache)
 
     def cleanup(self) -> None:
         """Cleanup resources."""
@@ -47,6 +83,16 @@ class DuplicateDetectorPlugin(ClassificationPlugin):
         self._metadata_hashes.clear()
         self._audio_fingerprints.clear()
         self._processed_files.clear()
+        self._chroma_features.clear()
+
+        # Close acoustic analyzer
+        if self._acoustic_analyzer is not None:
+            self._acoustic_analyzer.close()
+            self._acoustic_analyzer = None
+
+        if self._chroma_cache is not None:
+            self._chroma_cache.close()
+            self._chroma_cache = None
 
     async def classify(self, audio_file: AudioFile) -> Dict[str, Any]:
         """Classify an audio file for duplicates."""
@@ -89,7 +135,7 @@ class DuplicateDetectorPlugin(ClassificationPlugin):
                     })
             self._file_hashes[file_hash].append(file_path)
 
-        # Strategy 3: Audio fingerprint (acoustic similarity)
+        # Strategy 3: Audio fingerprint (basic acoustic similarity)
         if 'audio_fingerprint' in strategies:
             try:
                 fingerprint = await self._generate_audio_fingerprint(audio_file)
@@ -107,6 +153,30 @@ class DuplicateDetectorPlugin(ClassificationPlugin):
                     self._audio_fingerprints[fingerprint].append(file_path)
             except Exception as e:
                 # Fingerprinting can fail, but don't fail the entire plugin
+                pass
+
+        # Strategy 4: Chroma-based similarity (cover song detection)
+        if 'chroma_similarity' in strategies and self._acoustic_analyzer is not None:
+            try:
+                # Extract chroma features for current file
+                chroma_key = await self._extract_chroma_key(audio_file.path)
+                if chroma_key:
+                    # Compare with existing chroma features
+                    chroma_matches = await self._find_chroma_matches(audio_file.path, chroma_key)
+                    if chroma_matches:
+                        for match_file, similarity_result in chroma_matches:
+                            threshold = self.config.get('chroma_threshold', 0.60)
+                            if similarity_result.similarity >= threshold:
+                                match_type = 'cover' if similarity_result.is_cover else 'similar'
+                                duplicate_groups.append({
+                                    'type': match_type,
+                                    'confidence': similarity_result.similarity,
+                                    'duplicates': [match_file],
+                                    'reason': f'Chroma-based {match_type} detection (confidence: {similarity_result.confidence})',
+                                    'details': similarity_result.details
+                                })
+            except Exception as e:
+                # Chroma analysis can fail, but don't fail the entire plugin
                 pass
 
         # Filter duplicates based on configuration
@@ -230,6 +300,98 @@ class DuplicateDetectorPlugin(ClassificationPlugin):
 
         return matches / total_chunks if total_chunks > 0 else 0.0
 
+    async def _extract_chroma_key(self, file_path: Path) -> Optional[str]:
+        """Extract chroma features key for similarity comparison.
+
+        Returns a key that can be used for quick filtering before full comparison.
+        """
+        if self._acoustic_analyzer is None:
+            return None
+
+        try:
+            from music_organizer.ml.audio_features import FeatureCache
+            file_hash = FeatureCache.compute_file_hash(file_path)
+
+            # Check if we already have features cached
+            if file_hash in self._chroma_features:
+                return file_hash
+
+            # Extract and cache chroma features
+            chroma, duration, tempo = await self._acoustic_analyzer.extract_chroma(file_path)
+            self._chroma_features[file_hash] = (chroma, duration, tempo)
+
+            return file_hash
+        except Exception:
+            return None
+
+    async def _find_chroma_matches(
+        self,
+        file_path: Path,
+        chroma_key: str
+    ) -> List[Tuple[str, SimilarityResult]]:
+        """Find files with similar chroma features using DTW comparison."""
+        if self._acoustic_analyzer is None or chroma_key not in self._chroma_features:
+            return []
+
+        matches = []
+        from music_organizer.ml.audio_features import FeatureCache
+        current_hash = FeatureCache.compute_file_hash(file_path)
+        current_chroma, current_dur, current_tempo = self._chroma_features[chroma_key]
+
+        # Compare with all cached chroma features
+        for other_hash, (other_chroma, other_dur, other_tempo) in self._chroma_features.items():
+            if other_hash == current_hash:
+                continue
+
+            try:
+                # Quick filter: duration and tempo should be in reasonable range
+                dur_ratio = min(current_dur, other_dur) / max(current_dur, other_dur)
+                tempo_ratio = min(current_tempo, other_tempo) / max(current_tempo, other_tempo)
+
+                # Skip if too different (unless it's a remix)
+                if dur_ratio < 0.3 or dur_ratio > 3.0:
+                    continue
+
+                # Use DTW for tempo-invariant comparison
+                similarity = await self._acoustic_analyzer._dtw_similarity(
+                    current_chroma, other_chroma
+                )
+
+                if similarity > 0.4:  # Minimum threshold for reporting
+                    # Determine if likely a cover
+                    is_cover = similarity >= 0.60  # Low threshold for cover
+                    if similarity >= 0.75:
+                        confidence = "high"
+                    elif similarity >= 0.60:
+                        confidence = "medium"
+                    else:
+                        confidence = "low"
+
+                    result = SimilarityResult(
+                        similarity=similarity,
+                        is_cover=is_cover,
+                        confidence=confidence,
+                        details={
+                            "duration_ratio": dur_ratio,
+                            "tempo_ratio": tempo_ratio,
+                            "method": "dtw",
+                        },
+                    )
+
+                    # Find the original file path for this hash
+                    for other_file in self._processed_files:
+                        other_hash_check = FeatureCache.compute_file_hash(Path(other_file))
+                        if other_hash_check == other_hash:
+                            matches.append((other_file, result))
+                            break
+
+            except Exception:
+                continue
+
+        # Sort by similarity descending
+        matches.sort(key=lambda x: x[1].similarity, reverse=True)
+        return matches
+
     def _filter_duplicates(self, duplicate_groups: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Filter duplicates based on configuration."""
         filtered = []
@@ -256,7 +418,7 @@ class DuplicateDetectorPlugin(ClassificationPlugin):
             type=list,
             default=['metadata', 'file_hash', 'audio_fingerprint'],
             description="Duplicate detection strategies to use",
-            choices=['metadata', 'file_hash', 'audio_fingerprint']
+            choices=['metadata', 'file_hash', 'audio_fingerprint', 'chroma_similarity']
         ))
 
         schema.add_option(ConfigOption(
@@ -266,6 +428,15 @@ class DuplicateDetectorPlugin(ClassificationPlugin):
             min_value=0.0,
             max_value=1.0,
             description="Minimum similarity threshold for acoustic fingerprint matching"
+        ))
+
+        schema.add_option(ConfigOption(
+            name="chroma_threshold",
+            type=float,
+            default=0.60,
+            min_value=0.0,
+            max_value=1.0,
+            description="Minimum similarity threshold for chroma-based cover detection"
         ))
 
         schema.add_option(ConfigOption(
@@ -280,9 +451,9 @@ class DuplicateDetectorPlugin(ClassificationPlugin):
         schema.add_option(ConfigOption(
             name="allowed_types",
             type=list,
-            default=['exact', 'metadata', 'acoustic'],
+            default=['exact', 'metadata', 'acoustic', 'cover'],
             description="Types of duplicates to detect",
-            choices=['exact', 'metadata', 'acoustic']
+            choices=['exact', 'metadata', 'acoustic', 'cover', 'similar']
         ))
 
         schema.add_option(ConfigOption(
@@ -329,11 +500,15 @@ class DuplicateDetectorPlugin(ClassificationPlugin):
                 total_groups += 1
                 total_duplicates += len(files) - 1
 
-        return {
+        summary = {
             'total_duplicate_groups': total_groups,
             'total_duplicate_files': total_duplicates,
             'unique_files_processed': len(self._processed_files),
             'metadata_hashes': len(self._metadata_hashes),
             'file_hashes': len(self._file_hashes),
-            'audio_fingerprints': len(self._audio_fingerprints)
+            'audio_fingerprints': len(self._audio_fingerprints),
+            'chroma_features_cached': len(self._chroma_features),
+            'acoustic_similarity_available': ACOUSTIC_AVAILABLE,
         }
+
+        return summary

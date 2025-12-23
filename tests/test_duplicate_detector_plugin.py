@@ -79,7 +79,7 @@ class TestDuplicateDetectorPlugin:
         """Test plugin information."""
         info = plugin.info
         assert info.name == "duplicate_detector"
-        assert info.version == "1.0.0"
+        assert info.version == "1.1.0"
         assert "duplicate" in info.description.lower()
         assert info.dependencies == []
 
