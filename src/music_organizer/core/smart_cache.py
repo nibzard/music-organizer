@@ -469,7 +469,14 @@ class SmartCacheManager:
             row = cursor.fetchone()
 
             if row:
-                file_count, last_change, change_frequency = row
+                file_count, last_change_str, change_frequency = row
+
+                # Parse last_change from string if it's stored as text
+                if isinstance(last_change_str, str):
+                    # SQLite returns timestamps as strings
+                    last_change = datetime.fromisoformat(last_change_str.replace('Z', '+00:00'))
+                else:
+                    last_change = last_change_str
 
                 # Update change frequency
                 if directory_mtime != last_change.timestamp():
@@ -764,8 +771,15 @@ _default_smart_cache: Optional[SmartCacheManager] = None
 
 
 def get_smart_cache_manager(cache_dir: Optional[Path] = None) -> SmartCacheManager:
-    """Get the default smart cache manager."""
+    """Get the default smart cache manager.
+
+    If cache_dir is provided and differs from the current instance's directory,
+    the global instance is replaced with a new one using that directory.
+    """
     global _default_smart_cache
     if _default_smart_cache is None:
+        _default_smart_cache = SmartCacheManager(cache_dir)
+    elif cache_dir is not None and _default_smart_cache.cache_dir != cache_dir:
+        # Reset the global instance with the new cache_dir
         _default_smart_cache = SmartCacheManager(cache_dir)
     return _default_smart_cache
