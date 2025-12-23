@@ -334,7 +334,7 @@ class AudioFeatures:
     @property
     def is_speech(self) -> bool:
         """Check if track contains speech."""
-        return (self.speechness or 0) > 0.5
+        return (self.speechiness or 0) > 0.5
 
 
 @dataclass(frozen=True, slots=True)
