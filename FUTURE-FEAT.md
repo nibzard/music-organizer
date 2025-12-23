@@ -103,16 +103,17 @@ class MusicBrainzClient:
 ### 4. Additional Audio Formats
 
 **Formats to Add**:
-- OGG Vorbis
-- OPUS
-- WMA
-- APE (Monkey's Audio)
-- WAVPACK
+- ~~OGG Vorbis~~ ✅ Implemented
+- ~~OPUS~~ ✅ Implemented
+- ~~WMA~~ ✅ Implemented
+- ~~APE (Monkey's Audio)~~ ✅ Implemented
+- WAVPACK (not supported by mutagen)
 
-**Implementation**: Update `metadata.py` with format-specific handlers
+**Implementation**: Format-specific handlers added to `metadata.py`
 
 **Effort**: 1 hour
 **Impact**: Low (you only have FLAC and MP3)
+**Status**: Complete (2025-12-23) - All supported formats implemented
 
 ### 5. Web Dashboard
 

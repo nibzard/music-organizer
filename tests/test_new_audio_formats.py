@@ -16,6 +16,7 @@ class TestNewAudioFormats:
             ('.ogg', 'OGG'),
             ('.opus', 'OPUS'),
             ('.wma', 'WMA'),
+            ('.ape', 'APE'),
             ('.aiff', 'AIFF'),
             ('.aif', 'AIFF'),
         ]
@@ -63,7 +64,10 @@ class TestNewAudioFormats:
         # Check that methods exist
         assert hasattr(MetadataHandler, '_extract_ogg_metadata')
         assert hasattr(MetadataHandler, '_extract_wma_metadata')
+        assert hasattr(MetadataHandler, '_extract_ape_metadata')
         assert hasattr(MetadataHandler, '_get_wma_field')
+        assert hasattr(MetadataHandler, '_get_ape_field')
+        assert hasattr(MetadataHandler, '_get_ape_single_field')
 
     def test_extract_ogg_metadata_method(self):
         """Test OGG metadata extraction method signature."""
@@ -123,6 +127,35 @@ class TestNewAudioFormats:
         assert result.year == 2023
         assert result.track_number == 5
 
+    def test_extract_ape_metadata_method(self):
+        """Test APE metadata extraction method signature."""
+        # Create a mock AudioFile and ape_file
+        audio_file = AudioFile(path=Path("/test.ape"), file_type="APE")
+
+        # Mock APE file with tags
+        class MockApeFile:
+            def __init__(self):
+                self.tags = {
+                    'Artist': ['Test Artist'],
+                    'Album': ['Test Album'],
+                    'Title': ['Test Title'],
+                    'Genre': ['Rock'],
+                    'Year': ['2023'],
+                    'Track': ['5']
+                }
+
+        ape_file = MockApeFile()
+
+        # Test extraction
+        result = MetadataHandler._extract_ape_metadata(audio_file, ape_file)
+
+        assert result.artists == ['Test Artist']
+        assert result.album == 'Test Album'
+        assert result.title == 'Test Title'
+        assert result.genre == 'Rock'
+        assert result.year == 2023
+        assert result.track_number == 5
+
     def test_mutagen_import_handling(self):
         """Test that mutagen format modules are handled gracefully."""
         # This test verifies that the code doesn't crash if mutagen modules are missing
@@ -134,7 +167,8 @@ class TestNewAudioFormats:
         # Check that the module imports exist and are either available or None
         assert hasattr(metadata, 'OggVorbis')
         assert hasattr(metadata, 'OggOpus')
-        assert hasattr(metadata, 'WMA')
+        assert hasattr(metadata, 'ASF')  # WMA uses ASF in mutagen
+        assert hasattr(metadata, 'APEv2File')  # APE format support
 
         # These might be None if the modules aren't available, which is fine
         # The important thing is that the code handles it gracefully

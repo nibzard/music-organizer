@@ -23,9 +23,14 @@ except ImportError:
     OggOpus = None
 
 try:
-    from mutagen.wma import WMA
+    from mutagen.asf import ASF
 except ImportError:
-    WMA = None
+    ASF = None
+
+try:
+    from mutagen.apev2 import APEv2File
+except ImportError:
+    APEv2File = None
 
 from ..exceptions import MetadataError
 from ..models.audio_file import AudioFile
@@ -59,8 +64,10 @@ class MetadataHandler:
                 audio_file = MetadataHandler._extract_ogg_metadata(audio_file, mutagen_file)
             elif OggOpus and isinstance(mutagen_file, OggOpus):
                 audio_file = MetadataHandler._extract_ogg_metadata(audio_file, mutagen_file)
-            elif WMA and isinstance(mutagen_file, WMA):
+            elif ASF and isinstance(mutagen_file, ASF):
                 audio_file = MetadataHandler._extract_wma_metadata(audio_file, mutagen_file)
+            elif APEv2File and isinstance(mutagen_file, APEv2File):
+                audio_file = MetadataHandler._extract_ape_metadata(audio_file, mutagen_file)
 
             # Post-process metadata
             audio_file = MetadataHandler._post_process_metadata(audio_file)
@@ -366,6 +373,69 @@ class MetadataHandler:
         return audio_file
 
     @staticmethod
+    def _extract_ape_metadata(audio_file: AudioFile, ape_file) -> AudioFile:
+        """Extract metadata from APE file."""
+        if not ape_file.tags:
+            return audio_file
+
+        tags = ape_file.tags
+
+        # APE uses Vorbis-like comments with specific tag names
+        # Basic fields
+        raw_artists = MetadataHandler._get_ape_field(tags, ['Artist', 'Author'])
+
+        # Split artists if comma-separated
+        audio_file.artists = []
+        for artist in raw_artists:
+            if ',' in artist:
+                split_artists = [a.strip() for a in artist.split(',') if a.strip()]
+                audio_file.artists.extend(split_artists)
+            else:
+                audio_file.artists.append(artist)
+
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_artists = []
+        for artist in audio_file.artists:
+            if artist not in seen:
+                seen.add(artist)
+                unique_artists.append(artist)
+        audio_file.artists = unique_artists
+
+        # Check for Album Artist
+        albumartist = MetadataHandler._get_ape_single_field(tags, ['Album Artist', 'AlbumArtist'])
+        if albumartist:
+            audio_file.primary_artist = albumartist
+        else:
+            if audio_file.artists:
+                audio_file.primary_artist = audio_file.artists[0]
+
+        audio_file.album = MetadataHandler._get_ape_single_field(tags, ['Album'])
+        audio_file.title = MetadataHandler._get_ape_single_field(tags, ['Title'])
+        audio_file.genre = MetadataHandler._get_ape_single_field(tags, ['Genre'])
+
+        # Date fields
+        year = MetadataHandler._get_ape_field(tags, ['Year', 'Release Date'])
+        if year:
+            year_match = re.match(r'(\d{4})', str(year[0]) if isinstance(year, list) else str(year))
+            if year_match:
+                audio_file.year = int(year_match.group(1))
+
+        # Track number
+        track = MetadataHandler._get_ape_field(tags, ['Track'])
+        if track:
+            # Handle "total" format like "5/12"
+            track_str = track[0] if isinstance(track, list) else str(track)
+            track_match = re.match(r'(\d+)', track_str)
+            if track_match:
+                audio_file.track_number = int(track_match.group(1))
+
+        # Store metadata
+        audio_file.metadata = dict(tags)
+
+        return audio_file
+
+    @staticmethod
     def _get_list_field(tags: Dict, keys: List[str]) -> List[str]:
         """Get a field that can have multiple values."""
         for key in keys:
@@ -418,6 +488,28 @@ class MetadataHandler:
                     return [str(v) for v in value]
                 return [str(value)]
         return []
+
+    @staticmethod
+    def _get_ape_field(tags: Dict, keys: List[str]) -> List[str]:
+        """Get field from APE tags."""
+        for key in keys:
+            if key in tags:
+                value = tags[key]
+                if isinstance(value, list):
+                    return [str(v) for v in value]
+                return [str(value)]
+        return []
+
+    @staticmethod
+    def _get_ape_single_field(tags: Dict, keys: List[str]) -> Optional[str]:
+        """Get a single-value field from APE tags."""
+        for key in keys:
+            if key in tags:
+                value = tags[key]
+                if isinstance(value, list) and value:
+                    return str(value[0])
+                return str(value) if value else None
+        return None
 
     @staticmethod
     def _post_process_metadata(audio_file: AudioFile) -> AudioFile:

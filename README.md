@@ -12,7 +12,7 @@ A Python-based music library organizer that uses metadata-aware categorization t
 - 🔍 **Interactive Duplicate Resolution**: Side-by-side comparison with intelligent quality scoring for managing duplicates
 - 🔒 **Safe Operations**: Optional backup creation with rollback capability
 - 🎯 **Interactive Mode**: Prompts for ambiguous categorizations
-- 🎧 **Multiple Formats**: Support for FLAC, MP3, WAV, M4A, and AAC
+- 🎧 **Multiple Formats**: Support for FLAC, MP3, WAV, M4A, AAC, OGG, OPUS, WMA, APE, and AIFF
 - 💎 **Preserve Quality**: Maintains all high-quality audio files without transcoding
 - 📈 **Beautiful Output**: Rich terminal formatting with progress bars and tables
 - ⚡ **Fast Processing**: Efficiently handles large music libraries

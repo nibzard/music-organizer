@@ -142,6 +142,8 @@ class AudioFile:
             file_type = 'OPUS'
         elif extension in ['.wma']:
             file_type = 'WMA'
+        elif extension in ['.ape']:
+            file_type = 'APE'
         elif extension in ['.aiff', '.aif']:
             file_type = 'AIFF'
         else:
