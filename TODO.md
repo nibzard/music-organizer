@@ -633,7 +633,6 @@ music-batch-metadata /music/library --workers 8 --batch-size 200
     - ✅ Domain model API mismatches partially fixed (TrackNumber.to_dict() → str(), AudioFile size field)
   - **Remaining critical failures**:
     - **test_statistics_dashboard.py**: Multiple failures (query system, metrics calculation)
-    - **test_custom_naming_pattern_plugin.py**: 28 errors (import/setup issues)
     - **test_result_pattern_integration.py**: Import issues with domain models
     - **async_cli tests**: test_async_cli.py, test_async_organizer.py - async/await issues
     - **batch_metadata_cli tests**: CLI command failures
@@ -645,12 +644,14 @@ music-batch-metadata /music/library --workers 8 --batch-size 200
     - test_bulk_operations.py: 22/22 passing
     - test_domain_entities.py: 40/40 passing
     - test_magic_mode.py: 23/23 passing
+    - **test_custom_naming_pattern_plugin.py: 28/28 passing** ✅ FIXED (2024-12-23)
     - **test_smart_cache.py: 25/25 passing** ✅ FIXED (2024-12-23)
     - **test_async_mover.py: 12/12 passing (1 skipped due to pytest-asyncio fixture deadlock)** ✅ FIXED (2024-12-23)
     - CQRS modules: 59 tests passing
     - Events system: 105 tests passing
     - Plugins (example_classifier, m3u_exporter): 53 tests passing
   - **Recent fixes completed** (2024-12-23):
+    - ✅ **test_custom_naming_pattern_plugin.py**: Fixed all 28 tests - Updated AudioFile constructor calls to use file_type instead of duration/bitrate, fixed plugin to handle missing attributes (duration/bitrate now read from metadata), implemented proper conditional handling with {else} support, fixed template rendering to preserve path separators from template while cleaning slashes in values, fixed unknown variable handling to remove unknown {vars} while preserving conditionals, fixed trailing slash removal logic, fixed test_filesystem_cleaning to test value cleaning without template slashes, fixed variable name shadowing in test_multiple_content_types
     - ✅ **test_smart_cache.py**: Fixed all 25 tests - Fixed adaptive TTL calculation (julianday), datetime handling for SQLite, cache warming mocking, SmartCachedMetadataHandler tests, added autouse fixture for singletons, fixed get_smart_cache_manager cache directory handling, fixed test_extract_metadata_smart_cached temp directory, fixed test_cache_optimization to use force=True
     - ✅ **test_async_mover.py**: Fixed AsyncFileMover operation tracking bug - both move_file() and move_cover_art() now correctly store original path BEFORE updating object; simplified backup function to use filename only; disabled manifest creation; fixed test assertions - 12/12 passing (1 skipped due to unrelated pytest-asyncio fixture deadlock)
   - **Modules with excellent coverage**:

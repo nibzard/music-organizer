@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/core/bulk_organizer.py
+# hypothesis_version: 6.148.8
+
+[0.0, 100, 1000, '.gif', '.jpeg', '.jpg', '.png', 'Albums', 'Collaborations', 'Compilations', 'Live', 'Moving files', 'Rarities', 'Unknown', 'Unknown Album', 'Unknown Artist', 'albumart', 'bulk_stats', 'collaboration', 'compilation', 'completed', 'conflicts_resolved', 'content_distribution', 'cover', 'duration_seconds', 'errors', 'estimated_duration', 'estimated_size_mb', 'folder', 'front', 'library_stats', 'live', 'message', 'move', 'moved', 'processed', 'rarity', 'renamed', 'skipped', 'source', 'source_files', 'status', 'studio', 'success', 'success_rate', 'target', 'target_structure', 'total_files', 'total_size_mb']

@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/core/duplicate_resolver_organizer.py
+# hypothesis_version: 6.148.8
+
+[1000, 'Scanning files...', 'dry_run', 'duplicate_count', 'duplicate_detector', 'duplicate_summary', 'duplicate_types', 'duplicates', 'file', 'files_scanned', 'is_duplicate', 'sample_duplicates', 'total_files_estimate']

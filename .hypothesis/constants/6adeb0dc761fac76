@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/domain/classification/entities.py
+# hypothesis_version: 6.148.8
+
+[0.0, 0.1, 0.15, 0.2, 0.3, 0.35, 0.4, 0.5, 0.7, 0.8, 0.85, 1.0, '1.0', 'acoustic', 'acoustic_fingerprint', 'album', 'all', 'ambient', 'artist', 'artists', 'classical', 'confidence', 'content_type', 'dance', 'duration', 'duration_seconds', 'electronic', 'folk', 'genre', 'rock', 'rule_id', 'rule_name', 'the ', 'title', 'year']

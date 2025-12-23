@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/plugins/manager.py
+# hypothesis_version: 6.148.8
+
+['*.py', '_', '__annotations__', '__init__.py', '__origin__', 'builtins', 'cleanup', 'plugins', 'r', 'return', 'schemas', 'w']

@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/core/smart_cached_metadata.py
+# hypothesis_version: 6.148.8
+
+[0.01, 0.1, 0.5, 1000, '.aac', '.flac', '.m4a', '.mp3', '.mp4', '.ogg', '.opus', '.wav', '.wma', 'Using basic caching', 'auto_optimize', 'avg_access_frequency', 'avg_stability_score', 'basic', 'cache_type', 'fair', 'good', 'optimization_type', 'overall_health', 'poor', 'reason', 'recommendations', 'size_mb', 'skipped', 'smart', 'threshold_not_met', 'total_entries', 'warnings']

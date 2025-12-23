@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/models/config.py
+# hypothesis_version: 6.148.8
+
+['/path/to/source', '/path/to/target', 'Albums', 'Collaborations', 'Compilations', 'Live', 'Rarities', '__dataclass_fields__', 'move', 'number', 'r', 'w']

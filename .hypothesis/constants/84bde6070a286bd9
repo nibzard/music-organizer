@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/core/interactive_duplicate_resolver.py
+# hypothesis_version: 6.148.8
+
+[0.0, 0.1, 0.15, 0.25, 0.4, 1.0, 100, 1024, 3200, 192000, 'Cleanest file path', 'No duplicates found!', 'aac', 'action', 'aiff', 'alac', 'album', 'artists', 'auto_first', 'auto_keep_best', 'auto_smart', 'bitrate', 'decisions', 'delete_duplicate', 'deleted_files', 'dry_run', 'duplicate_dir', 'exact', 'flac', 'genre', 'interactive', 'keep_best_quality', 'keep_both', 'keep_first', 'keep_second', 'kept_files', 'm4a', 'move_duplicate', 'moved_files', 'mp3', 'ogg', 'opus', 'reason', 'resolved_groups', 'sample_rate', 'skipped_files', 'space_saved_mb', 'strategy', 'summary', 'target_file', 'timestamp', 'title', 'total_groups', 'track_number', 'utf-8', 'w', 'wav', 'wma', 'year']

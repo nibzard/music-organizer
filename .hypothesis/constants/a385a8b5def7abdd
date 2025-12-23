@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/plugins/config.py
+# hypothesis_version: 6.148.8
+
+[0.0, 0.1, 0.5, 1.0, 10.0, 60.0, 86400, ',', '1', 'cache_ttl', 'choices', 'confidence_threshold', 'default', 'description', 'enabled', 'format_options', 'get_config_schema', 'max_value', 'min_value', 'on', 'output_dir', 'overwrite', 'overwrite_existing', 'required', 'tags', 'timeout', 'true', 'type', 'yes']

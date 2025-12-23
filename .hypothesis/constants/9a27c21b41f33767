@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/models/audio_file.py
+# hypothesis_version: 6.148.8
+
+[0.0, 1024, ' -', ' - ', ' et al.', '"', "'", '*', ', ', '-', '.aac', '.aif', '.aiff', '.flac', '.gif', '.jpeg', '.jpg', '.m4a', '.mp3', '.mp4', '.ogg', '.opus', '.png', '.wav', '.wma', '/', ':', '<', '>', '?', 'AIFF', 'Albums', 'AudioFile', 'Collaborations', 'Compilations', 'CoverArt', 'FLAC', 'Live', 'MP3', 'MP4', 'OGG', 'OPUS', 'Rarities', 'UNKNOWN', 'Unknown Album', 'Unknown Artist', 'Unknown Compilation', 'Unknown Location', 'Unknown Release', 'Various Artists', 'WAV', 'WMA', '\\', '^(\\d+)\\.\\s*(.+)', '_', 'back', 'collaboration', 'compilation', 'cover', 'disc', 'edition', 'folder', 'front', 'live', 'other', 'rarity', 'studio', 'unknown', '|']

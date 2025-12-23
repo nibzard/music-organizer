@@ -25,6 +25,7 @@ class MetadataService:
         """Enhance a recording's metadata with additional information."""
         try:
             # Create new metadata with enhanced fields
+            # Note: total_tracks is not in the current Metadata model
             updated_metadata = Metadata(
                 title=enhanced_metadata.title or recording.metadata.title,
                 artists=enhanced_metadata.artists or recording.metadata.artists,
@@ -32,7 +33,7 @@ class MetadataService:
                 year=enhanced_metadata.year or recording.metadata.year,
                 genre=enhanced_metadata.genre or recording.metadata.genre,
                 track_number=enhanced_metadata.track_number or recording.metadata.track_number,
-                total_tracks=enhanced_metadata.total_tracks or recording.metadata.total_tracks,
+                # total_tracks not available in current Metadata model
                 disc_number=enhanced_metadata.disc_number or recording.metadata.disc_number,
                 total_discs=enhanced_metadata.total_discs or recording.metadata.total_discs,
                 albumartist=enhanced_metadata.albumartist or recording.metadata.albumartist,
@@ -42,10 +43,9 @@ class MetadataService:
                 bitrate=recording.metadata.bitrate,
                 sample_rate=recording.metadata.sample_rate,
                 channels=recording.metadata.channels,
-                file_hash=recording.metadata.file_hash,
-                acoustic_fingerprint=recording.metadata.acoustic_fingerprint,
-                # Preserve format-specific metadata
-                format_metadata=recording.metadata.format_metadata,
+                # Preserve live/recording metadata
+                date=recording.metadata.date,
+                location=recording.metadata.location,
             )
 
             # Update recording with new metadata
@@ -169,23 +169,33 @@ class CatalogService:
             if existing:
                 return failure(DuplicateError(f"Recording already exists at path: {recording.path}"))
 
-            # Find or create artist
-            for artist_name in recording.artists:
-                artist = await self.artist_repo.find_by_name(artist_name)
+            # Find or create artist - artists are in metadata, not directly on Recording
+            for artist_name in recording.metadata.artists:
+                # artist_name is an ArtistName value object, use .name property
+                artist_str = artist_name.name
+                artist = await self.artist_repo.find_by_name(artist_str)
                 if not artist:
-                    artist = Artist(name=artist_name)
+                    artist = Artist(name=artist_str)
                     await self.artist_repo.save(artist)
 
             # Find or create release
             if recording.metadata.album:
+                # Use albumartist if available, otherwise use first artist
+                if recording.metadata.albumartist:
+                    primary_artist_str = recording.metadata.albumartist.name
+                elif recording.metadata.artists:
+                    primary_artist_str = list(recording.metadata.artists)[0].name
+                else:
+                    primary_artist_str = "Unknown"
+
                 release = await self.release_repo.find_by_title_and_artist(
                     recording.metadata.album,
-                    recording.primary_artist
+                    primary_artist_str
                 )
                 if not release:
                     release = Release(
                         title=recording.metadata.album,
-                        primary_artist=recording.primary_artist,
+                        primary_artist=primary_artist_str,
                         year=recording.metadata.year
                     )
                     await self.release_repo.save(release)

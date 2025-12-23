@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/plugins/builtins/duplicate_detector.py
+# hypothesis_version: 6.148.8
+
+[0.0, 0.5, 0.85, 1.0, 100, '1.0.0', 'Music Organizer Team', 'acoustic', 'allowed_types', 'audio_fingerprint', 'audio_fingerprints', 'batch_size', 'bitrate', 'channels', 'confidence', 'duplicate_count', 'duplicate_detector', 'duplicates', 'exact', 'file_hash', 'file_hashes', 'info', 'is_duplicate', 'length', 'metadata', 'metadata_hashes', 'min_confidence', 'reason', 'sample_rate', 'similarity_threshold', 'strategies', 'type', 'utf-8']

@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/plugins/base.py
+# hypothesis_version: 6.148.8
+
+['3.9', 'album', 'artist', 'artists', 'bitrate', 'content_type', 'date', 'duration', 'format', 'genre', 'location', 'primary_artist', 'title', 'track_number', 'year']

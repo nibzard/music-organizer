@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/core/cache.py
+# hypothesis_version: 6.148.8
+
+[1024, '.cache', 'album', 'artists', 'content_type', 'date', 'expired_entries', 'file_mtime', 'file_size', 'file_type', 'genre', 'has_cover_art', 'location', 'metadata', 'metadata.db', 'music-organizer', 'primary_artist', 'size_bytes', 'size_mb', 'title', 'total_entries', 'track_number', 'valid_entries', 'year']

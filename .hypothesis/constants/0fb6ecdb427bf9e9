@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/domain/organization/entities.py
+# hypothesis_version: 6.148.8
+
+[0.0, 100, '/', '<>:"|?*', 'Compilations', 'DJ Mixes', 'Live Recordings', 'Soundtracks', 'Unknown Artist', '_', 'album', 'albumartist', 'artist', 'cancelled', 'completed', 'completed_at', 'decade', 'dj mix', 'duration_minutes', 'failed', 'genre', 'in_progress', 'pending', 'progress_percentage', 'session_id', 'skipped', 'soundtrack', 'source_directory', 'started_at', 'status', 'successful', 'target_directory', 'total_files', 'year']

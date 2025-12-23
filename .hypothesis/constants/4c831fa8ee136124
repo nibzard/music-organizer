@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/core/async_mover.py
+# hypothesis_version: 6.148.8
+
+['%Y%m%d_%H%M%S', '*', '.aac', '.flac', '.gif', '.jpeg', '.jpg', '.m4a', '.mp3', '.png', '.wav', 'Albums', 'Collaborations', 'Compilations', 'Live', 'Rarities', 'audio', 'back', 'cover', 'directories_created', 'disc', 'errors', 'files', 'front', 'manifest.json', 'move', 'move_cover', 'mtime', 'operations', 'operations.json', 'original', 'path', 'r', 'size', 'source_root', 'summary', 'target', 'timestamp', 'total_cover_art', 'total_files', 'total_size_mb', 'type', 'w']

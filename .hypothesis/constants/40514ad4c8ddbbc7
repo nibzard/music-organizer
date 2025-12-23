@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/plugins/__init__.py
+# hypothesis_version: 6.148.8
+
+['ClassificationPlugin', 'MetadataPlugin', 'OutputPlugin', 'Plugin', 'PluginHooks', 'PluginManager']

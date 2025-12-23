@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/plugins/hooks.py
+# hypothesis_version: 6.148.8
+
+['error_occurred', 'handler', 'original_event', 'post_classify', 'post_move', 'post_scan', 'pre_classify', 'pre_metadata_extract', 'pre_move', 'pre_scan', 'progress_update']

@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/core/enhanced_async_organizer.py
+# hypothesis_version: 6.148.8
+
+[80.0, '%Y%m%d_%H%M%S_%f', '*', '.aac', '.flac', '.m4a', '.mp3', '.wav', 'Classifying content', 'Extracting metadata', 'No active session', 'Organizing files', '__aexit__', 'backup', 'completed_operations', 'config', 'conflict_strategy', 'create_subdirs', 'dry_run', 'enable_incremental', 'end_time', 'failed', 'failed_files', 'failed_operations', 'file_mover', 'file_operations', 'get_cached', 'interactive', 'max_workers', 'message', 'organized_files', 'session_id', 'session_summary', 'skipped_files', 'source_directory', 'start_time', 'status', 'target_directory', 'total_files', 'use_cache']

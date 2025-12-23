@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/domain/classification/services.py
+# hypothesis_version: 6.148.8
+
+[-8.0, 0.0, 0.05, 0.1, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.85, 1.0, 120.0, 1024, 'C', 'acoustic_fingerprint', 'action', 'actions', 'ambient', 'automatic', 'classical', 'comprehensive', 'confidence', 'content_type', 'dance', 'delete', 'destination', 'duplicate backup', 'duplicates/', 'duration_seconds', 'electronic', 'energy_level', 'errors', 'fast', 'features', 'fingerprint_based', 'folk', 'genre', 'genre_confidence', 'genres', 'group_id', 'keep_all', 'keep_best', 'major', 'metadata', 'metal', 'move', 'move_duplicates', 'preferred_format', 'reason', 'recording_id', 'rock', 'size_mb', 'strategy', 'user_corrected']

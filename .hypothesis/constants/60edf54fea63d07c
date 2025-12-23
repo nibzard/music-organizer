@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/core/parallel_metadata.py
+# hypothesis_version: 6.148.8
+
+[0.0, 0.75, 80.0, 100.0, 100, 120, 150, 1024, 'file_size', 'worker_id']

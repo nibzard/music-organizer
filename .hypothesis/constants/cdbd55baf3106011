@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/domain/catalog/value_objects.py
+# hypothesis_version: 6.148.8
+
+[1024, 9999, '#', '(\\d+)\\s*of\\s*(\\d+)', ', ', '.', '/', '\\d+', '_format', '_name', '_number', '_path', '_total', '_unknown_format', 'a', 'aiff', 'album', 'albumartist', 'an', 'artists', 'bitrate', 'bpm', 'channels', 'comment', 'compilation', 'composer', 'concert', 'date', 'disc_number', 'duration_seconds', 'flac', 'genre', 'key', 'live', 'location', 'm4a', 'mp3', 'mp4', 'ogg', 'opus', 'ost', 'sample_rate', 'soundtrack', 'the', 'title', 'total_discs', 'track_number', 'various', 'wav', 'wma', 'year']

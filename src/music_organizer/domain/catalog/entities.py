@@ -71,7 +71,10 @@ class Recording:
     @property
     def artists(self) -> List[ArtistName]:
         """Get the recording artists."""
-        return self.metadata.artists or [ArtistName("Unknown Artist")]
+        # Convert frozenset to list for indexing
+        if not self.metadata.artists:
+            return [ArtistName("Unknown Artist")]
+        return list(self.metadata.artists)
 
     @property
     def primary_artist(self) -> ArtistName:

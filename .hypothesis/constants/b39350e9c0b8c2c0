@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/domain/catalog/entities.py
+# hypothesis_version: 6.148.8
+
+[0.0, 0.1, 0.15, 0.35, 0.4, 0.8, 0.85, 0.95, 1.0, 999, 'Recording', 'Release', 'Unknown Artist', 'album', 'artists', 'bitrate', 'created_at', 'decade_distribution', 'duplicate_count', 'duration_seconds', 'error_count', 'format', 'format_distribution', 'from', 'genre', 'genre_distribution', 'id', 'is_duplicate', 'is_processed', 'keep_both', 'path', 'processed_count', 'rename', 'replace', 'size_mb', 'skip', 'the ', 'timestamp', 'title', 'to', 'top_artists', 'total_artists', 'total_recordings', 'total_releases', 'track_number', 'unknown', 'year']

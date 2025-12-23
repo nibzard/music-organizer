@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/domain/classification/__init__.py
+# hypothesis_version: 6.148.8
+
+['ClassificationRule', 'Classifier', 'ContentType', 'ContentTypeEnum', 'DuplicateGroup', 'DuplicateService', 'SimilarityScore', 'SimilarityThreshold']

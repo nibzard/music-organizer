@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/core/enhanced_file_mover.py
+# hypothesis_version: 6.148.8
+
+[65536, '%Y%m%d_%H%M%S', '%Y%m%d_%H%M%S_%f', '*', '.aac', '.flac', '.gif', '.jpeg', '.jpg', '.m4a', '.mp3', '.png', '.wav', 'No session active', 'Session not found', 'audio', 'back', 'backup_dir', 'backup_enabled', 'completed', 'completed_operations', 'cover', 'cover_type', 'disc', 'end_time', 'failed', 'failed_operations', 'file_format', 'file_type', 'files', 'format', 'front', 'manifest.json', 'move', 'move_cover', 'mtime', 'operation_id', 'operation_types', 'operations', 'operations.json', 'original', 'path', 'pending_operations', 'rb', 'session_id', 'size', 'source_root', 'start_time', 'status', 'summary', 'target', 'target_root', 'timestamp', 'total_operations', 'total_size_bytes', 'type', 'verify_checksum', 'w']

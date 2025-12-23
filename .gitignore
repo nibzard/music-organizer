@@ -8,3 +8,10 @@ wheels/
 
 # Virtual environments
 .venv
+venv/
+
+# Hypothesis (property-based testing)
+.hypothesis/
+
+# Benchmark results
+benchmarks/benchmark_results.json

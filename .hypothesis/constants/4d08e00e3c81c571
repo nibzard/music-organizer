@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/core/scan_tracker.py
+# hypothesis_version: 6.148.8
+
+['*', '.aac', '.cache', '.flac', '.m4a', '.mp3', '.ogg', '.opus', '.wav', '.wma', 'added', 'directory', 'files_added', 'files_modified', 'files_scanned', 'last_scan', 'modified', 'music-organizer', 'recent_scans', 'removed', 'scan_history.db', 'scanned', 'started_at', 'total_files_tracked']

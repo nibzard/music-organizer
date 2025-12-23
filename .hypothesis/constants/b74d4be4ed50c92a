@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/domain/organization/__init__.py
+# hypothesis_version: 6.148.8
+
+['ConflictResolution', 'ConflictStrategy', 'FolderStructure', 'MovedFile', 'OrganizationPattern', 'OrganizationRule', 'OrganizationService', 'TargetPath']

@@ -117,7 +117,11 @@ class StatisticsDashboard:
         self.console.print("🔍 Scanning music library...", style="cyan")
 
         # Use AsyncMusicOrganizer to scan and extract metadata
-        config = Config()
+        # Config requires source_directory and target_directory
+        config = Config(
+            source_directory=music_library_path,
+            target_directory=music_library_path  # Dashboard doesn't move files, just reads
+        )
         organizer = AsyncMusicOrganizer(config=config)
 
         progress = SimpleProgress(total=1, description="Loading library")

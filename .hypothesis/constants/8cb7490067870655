@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/ui/duplicate_resolver_ui.py
+# hypothesis_version: 6.148.8
+
+[0.7, 0.9, 100, 1024, '\x1b[0m', '\x1b[1m', '\x1b[2m', '\x1b[4m', '\x1b[91m', '\x1b[92m', '\x1b[93m', '\x1b[94m', '\x1b[95m', '\x1b[96m', '\x1b[97m', '1', '2', '3', '4', '5', '6', 'Bitrate', 'Format', 'RESOLUTION SUMMARY', 'Sample Rate', 'Size', 'Unknown', 'Unknown size', 'bitrate', 'clear', 'cls', 'n', 'no', 'nt', 'sample_rate', 'space_saved_mb', 'y', 'yes', '█', '░', '★ BEST', '✓', '✗']

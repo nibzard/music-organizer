@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/core/async_organizer.py
+# hypothesis_version: 6.148.8
+
+[80.0, 100, 200, '\nSelect category:', '*', '.aac', '.flac', '.m4a', '.mp3', '.wav', '1', '2', '3', '4', '5', '6', 'Album', 'Albums', 'Collaboration', 'Collaborations', 'Compilation', 'Compilations', 'Live', 'Live Recording', 'Rarities', 'Skip this file', 'Unknown', 'Your choice', '_', 'avg_time_per_file', 'backup', 'by_category', 'cache', 'collaboration', 'compilation', 'content_type', 'cyan', 'errors', 'extraction', 'extraction_stats', 'files_failed', 'files_processed', 'files_succeeded', 'live', 'memory_peak_mb', 'moved', 'processed', 'processing_time', 'rarity', 'red', 'scan_info', 'skipped', 'studio', 'throughput_mbps', 'unknown', 'worker_count', 'yellow']

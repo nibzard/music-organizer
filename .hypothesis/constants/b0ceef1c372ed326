@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/domain/catalog/__init__.py
+# hypothesis_version: 6.148.8
+
+['Artist', 'ArtistName', 'ArtistRepository', 'AudioPath', 'Catalog', 'CatalogService', 'FileFormat', 'Metadata', 'MetadataService', 'Recording', 'RecordingRepository', 'Release', 'ReleaseRepository', 'TrackNumber']

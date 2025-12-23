@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/domain/organization/services.py
+# hypothesis_version: 6.148.8
+
+[4096, '%Y%m%d_%H%M%S', '*', 'Would move', 'action', 'conflict', 'duplicates', 'rb', 'rule', 'source_path', 'target_path']

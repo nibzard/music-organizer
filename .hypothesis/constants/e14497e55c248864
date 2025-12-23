@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/domain/organization/value_objects.py
+# hypothesis_version: 6.148.8
+
+[255, '/', '<>:"|?*', 'TargetPath', 'Unknown Artist', '[_-]+', '\\{(\\w+)\\}', '\\{if:', '\\{if:(\\w+)\\}', '\\}.*?\\{endif\\}', '_', '_-', 'album', 'albumartist', 'append_suffix', 'artist', 'composer', 'custom', 'decade', 'disc_number', 'endif', 'file_extension', 'filename_without_ext', 'flat', 'genre', 'if', 'keep_both', 'rename', 'replace', 'skip', 'title', 'total_discs', 'total_tracks', 'track_number', 'year']

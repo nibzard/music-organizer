@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/core/bulk_progress_tracker.py
+# hypothesis_version: 6.148.8
+
+[0.0, 0.1, 0.5, 0.7, 100, 'average', 'average_mb_per_sec', 'avg_batch_efficiency', 'batch_count', 'batch_id', 'batch_processing', 'best_batch', 'conflict_rate', 'conflict_resolution', 'conflicts', 'conflicts_resolved', 'creating_directories', 'current_batch', 'current_bulk_stage', 'duration', 'error', 'finalization', 'keep_both', 'max', 'mean', 'min', 'min_mb_per_sec', 'peak_mb_per_sec', 'performance_analysis', 'preparing_operations', 'recent_batches', 'rename', 'renamed', 'replace', 'replaced', 'skip', 'skipped', 'std_dev', 'success_rate', 'throughput_analysis', 'total', 'total_batches', 'total_failed', 'total_size_mb', 'total_skipped', 'total_successful', 'total_time', 'verification', 'verification_time', 'worst_batch']

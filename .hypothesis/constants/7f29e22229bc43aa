@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/core/cached_metadata.py
+# hypothesis_version: 6.148.8
+
+[0.0, 100, '.aac', '.flac', '.m4a', '.mp3', '.mp4', '.ogg', '.opus', '.wav', '.wma', 'cache_hits', 'cache_misses', 'hit_rate']

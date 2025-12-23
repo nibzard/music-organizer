@@ -1,0 +1,4 @@
+# file: /home/niko/music-organizer/src/music_organizer/core/operation_history.py
+# hypothesis_version: 6.148.8
+
+[65536, '%Y%m%d_%H%M%S_%f', '.cache', 'OperationRecord', 'OperationSession', 'backup_path', 'checksum_after', 'checksum_before', 'completed', 'completed_operations', 'copy', 'create_dir', 'delete', 'dry_run', 'end_time', 'error', 'error_message', 'failed', 'failed_operations', 'failed_rollbacks', 'file_size', 'id', 'in_progress', 'message', 'metadata', 'move', 'move_cover', 'music-organizer', 'operation_history.db', 'operation_id', 'operation_type', 'pending', 'rb', 'reason', 'rollback_timestamp', 'rolled_back', 'running', 'session_id', 'skipped_operations', 'skipped_rollbacks', 'source_path', 'source_root', 'start_time', 'status', 'successful_rollbacks', 'target_path', 'target_root', 'timestamp', 'total_operations']
