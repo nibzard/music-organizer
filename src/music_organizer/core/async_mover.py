@@ -47,8 +47,9 @@ class AsyncFileMover:
                     lambda: self.backup_dir.mkdir(parents=True, exist_ok=True)
                 )
 
-                # Create backup manifest
-                await self._create_backup_manifest(source_root)
+                # Note: Manifest creation disabled - was causing hanging issues
+                # The manifest scanning could hang on large directory trees
+                # await self._create_backup_manifest(source_root)
 
     async def finish_operation(self) -> None:
         """Finish current operation session."""
@@ -77,23 +78,26 @@ class AsyncFileMover:
         # Check if target already exists
         final_target = await self._resolve_duplicate(target_path)
 
+        # Store original path BEFORE the move
+        original_path = audio_file.path
+
         # Perform the move
         try:
             if self.backup_enabled and self.backup_dir:
                 # Create backup copy first
-                await self._backup_file(audio_file.path)
+                await self._backup_file(original_path)
 
             await asyncio.get_event_loop().run_in_executor(
                 self.executor,
-                lambda: shutil.move(str(audio_file.path), str(final_target))
+                lambda: shutil.move(str(original_path), str(final_target))
             )
             audio_file.path = final_target
 
-            # Record operation
+            # Record operation with ORIGINAL path (not the updated one)
             async with self._lock:
                 self.operations.append({
                     'type': 'move',
-                    'original': str(audio_file.path),
+                    'original': str(original_path),
                     'target': str(final_target),
                     'timestamp': datetime.now().isoformat()
                 })
@@ -101,7 +105,7 @@ class AsyncFileMover:
             return final_target
 
         except Exception as e:
-            raise FileOperationError(f"Failed to move {audio_file.path}: {e}")
+            raise FileOperationError(f"Failed to move {original_path}: {e}")
 
     async def move_files_batch(self,
                               moves: List[Tuple[AudioFile, Path]]) -> List[Tuple[bool, Optional[Path], Optional[str]]]:
@@ -135,21 +139,24 @@ class AsyncFileMover:
         # Handle duplicates
         target_path = await self._resolve_duplicate(target_path)
 
+        # Store original path BEFORE the move
+        original_path = cover_art.path
+
         try:
             if self.backup_enabled and self.backup_dir:
-                await self._backup_file(cover_art.path)
+                await self._backup_file(original_path)
 
             await asyncio.get_event_loop().run_in_executor(
                 self.executor,
-                lambda: shutil.move(str(cover_art.path), str(target_path))
+                lambda: shutil.move(str(original_path), str(target_path))
             )
             cover_art.path = target_path
 
-            # Record operation
+            # Record operation with ORIGINAL path (not the updated one)
             async with self._lock:
                 self.operations.append({
                     'type': 'move_cover',
-                    'original': str(cover_art.path),
+                    'original': str(original_path),
                     'target': str(target_path),
                     'timestamp': datetime.now().isoformat()
                 })
@@ -157,7 +164,7 @@ class AsyncFileMover:
             return target_path
 
         except Exception as e:
-            raise FileOperationError(f"Failed to move cover art {cover_art.path}: {e}")
+            raise FileOperationError(f"Failed to move cover art {original_path}: {e}")
 
     async def rollback(self) -> None:
         """Rollback all performed operations asynchronously."""
@@ -254,9 +261,10 @@ class AsyncFileMover:
 
         def _do_backup():
             try:
-                # Create relative path in backup
-                relative_path = file_path.relative_to(file_path.anchor)
-                backup_path = self.backup_dir / relative_path
+                # Use just the filename for backup to avoid path issues
+                # The source_root-relative path approach has issues with absolute paths
+                filename = file_path.name
+                backup_path = self.backup_dir / filename
                 backup_path.parent.mkdir(parents=True, exist_ok=True)
 
                 # Copy file if backup doesn't exist
