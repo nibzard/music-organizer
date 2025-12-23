@@ -450,6 +450,12 @@ class ScanTracker:
         # SQLite connections are closed automatically with context managers
         pass
 
+    @classmethod
+    def reset(cls) -> None:
+        """Reset the singleton instance for testing purposes."""
+        with cls._lock:
+            cls._instance = None
+
     def __del__(self) -> None:
         """Cleanup on deletion."""
         self.close()

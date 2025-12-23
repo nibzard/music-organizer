@@ -18,6 +18,7 @@ class TestScanTracker(unittest.TestCase):
 
     def setUp(self):
         """Set up test environment."""
+        ScanTracker.reset()  # Reset singleton before each test
         self.temp_dir = Path(tempfile.mkdtemp())
         self.tracker = ScanTracker(cache_dir=self.temp_dir)
 
@@ -149,6 +150,7 @@ class TestIncrementalScanner(unittest.TestCase):
 
     def setUp(self):
         """Set up test environment."""
+        ScanTracker.reset()  # Reset singleton before each test
         self.temp_dir = Path(tempfile.mkdtemp())
         self.scanner = IncrementalScanner(cache_dir=self.temp_dir)
 
