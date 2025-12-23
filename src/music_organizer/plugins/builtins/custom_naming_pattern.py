@@ -28,9 +28,7 @@ class PatternTemplate:
         'track_number': lambda af: f"{af.track_number:02d}" if af.track_number is not None else '',
         'title': lambda af: af.title or af.path.stem,
         'genre': lambda af: af.genre or 'Unknown',
-        'duration': lambda af: f"{af.duration:.0f}" if af.duration else '',
-        'bitrate': lambda af: str(af.bitrate) if af.bitrate else '',
-        'format': lambda af: af.format or af.path.suffix.lstrip('.').upper(),
+        'format': lambda af: af.file_type or af.path.suffix.lstrip('.').upper(),
         'content_type': lambda af: af.content_type.value if af.content_type else 'unknown',
         'date': lambda af: af.date or '',
         'location': lambda af: af.location or '',
@@ -39,12 +37,15 @@ class PatternTemplate:
     # Additional computed variables
     COMPUTED_VARIABLES = {
         'albumartist': lambda af: af.metadata.get('albumartist', '') or af.primary_artist or '',
-        'disc_number': lambda af: f"{af.disc_number:02d}" if af.disc_number is not None else '',
-        'total_discs': lambda af: str(af.total_discs) if af.total_discs is not None else '',
-        'total_tracks': lambda af: str(af.total_tracks) if af.total_tracks is not None else '',
+        'disc_number': lambda af: f"{int(af.metadata.get('disc_number', 0)):02d}" if af.metadata.get('disc_number') else '',
+        'total_discs': lambda af: str(af.metadata.get('total_discs', '')) if af.metadata.get('total_discs') else '',
+        'total_tracks': lambda af: str(af.metadata.get('total_tracks', '')) if af.metadata.get('total_tracks') else '',
         'first_letter': lambda af: (af.primary_artist or af.artists[0] if af.artists else 'Unknown')[0].upper(),
         'decade': lambda af: f"{(af.year // 10) * 10}s" if af.year else '',
         'file_extension': lambda af: af.path.suffix,
+        # Legacy variables for backward compatibility (now read from metadata)
+        'duration': lambda af: str(af.metadata.get('duration', '')) if af.metadata.get('duration') else '',
+        'bitrate': lambda af: str(af.metadata.get('bitrate', '')) if af.metadata.get('bitrate') else '',
     }
 
     def __init__(self):
@@ -61,30 +62,53 @@ class PatternTemplate:
         Returns:
             Rendered string with variables replaced
         """
+        # Mark template path separators with a placeholder so we don't clean them
+        # Use a string that won't appear in music metadata
+        TEMPLATE_PATH_PLACEHOLDER = '___PATH_SEPARATOR___'
+        template = template.replace('/', TEMPLATE_PATH_PLACEHOLDER)
+        template = template.replace('\\', TEMPLATE_PATH_PLACEHOLDER)
+
         # First pass: replace all variables
         result = template
 
         for var_name, getter in self.all_variables.items():
             pattern = re.compile(rf'\{{{re.escape(var_name)}\}}')
             value = getter(audio_file)
-            # Clean the value for filesystem compatibility
-            clean_value = self._clean_for_filesystem(str(value))
+            # Clean the value for filesystem compatibility (removes slashes from values)
+            clean_value = self._clean_value(str(value))
             result = pattern.sub(clean_value, result)
 
         # Handle conditional sections {if:variable}...{endif}
         result = self._handle_conditionals(result, audio_file)
 
-        # Clean up any remaining filesystem-incompatible characters
-        result = self._clean_for_filesystem(result)
+        # Remove any remaining {unknown} variables (replace with empty string)
+        # But exclude conditional tags and other special patterns
+        result = re.sub(r'\{(?!if:|else|endif)([^}]+)\}', '', result)
+
+        # Clean up any remaining filesystem-incompatible characters in the result
+        result = self._clean_result(result)
+
+        # Restore template path separators
+        result = result.replace(TEMPLATE_PATH_PLACEHOLDER, '/')
 
         # Remove multiple consecutive separators
-        result = re.sub(r'[\\/]+', '/', result)
-        result = re.sub(r'/+$', '', result)  # Remove trailing slash
+        result = re.sub(r'/+', '/', result)
+
+        # Remove trailing slash, but only if removing it doesn't leave an empty path
+        # Keep trailing slash if it would leave us with just a directory name without content
+        # (e.g., "The Beatles/" is valid, but "The Beatles/Abbey Road/" -> "The Beatles/Abbey Road")
+        if result.endswith('/'):
+            result_without_trailing = result.rstrip('/')
+            # Only remove trailing slash if there's at least one other slash in the path
+            # (meaning we have a multi-component path, not just a single directory)
+            if '/' in result_without_trailing:
+                result = result_without_trailing
 
         return result
 
-    def _clean_for_filesystem(self, value: str) -> str:
-        """Clean a string to be filesystem-safe.
+    def _clean_value(self, value: str) -> str:
+        """Clean a value (individual field) to be filesystem-safe.
+        This cleans problematic characters within values including slashes.
 
         Args:
             value: String to clean
@@ -92,7 +116,7 @@ class PatternTemplate:
         Returns:
             Filesystem-safe string
         """
-        # Replace problematic characters
+        # Replace problematic characters (including slashes in values)
         replacements = {
             '/': ' - ',
             '\\': ' - ',
@@ -119,10 +143,59 @@ class PatternTemplate:
 
         return value
 
+    def _clean_result(self, value: str) -> str:
+        """Clean the final result string.
+        This only cleans characters that shouldn't be in paths at all,
+        not path separators (those are handled with placeholders).
+
+        Args:
+            value: String to clean
+
+        Returns:
+            Filesystem-safe string
+        """
+        # Replace problematic characters (not slashes - those are placeholders)
+        replacements = {
+            ':': ' - ',
+            '*': '',
+            '?': '',
+            '"': "'",
+            '<': '',
+            '>': '',
+            '|': '-',
+            '\n': ' ',
+            '\r': ' ',
+            '\t': ' ',
+        }
+
+        for old, new in replacements.items():
+            value = value.replace(old, new)
+
+        # Remove control characters
+        value = ''.join(char for char in value if ord(char) >= 32)
+
+        # Collapse multiple spaces
+        value = re.sub(r'\s+', ' ', value).strip()
+
+        return value
+
+    def _clean_for_filesystem(self, value: str) -> str:
+        """Clean a string to be filesystem-safe (legacy method for backward compatibility).
+
+        Args:
+            value: String to clean
+
+        Returns:
+            Filesystem-safe string
+        """
+        return self._clean_value(value)
+
     def _handle_conditionals(self, template: str, audio_file: AudioFile) -> str:
         """Handle conditional sections in templates.
 
-        Supports format: {if:variable}content{endif}
+        Supports formats:
+        - {if:variable}content{endif}
+        - {if:variable}content{else}alternative{endif}
         The content is only included if the variable has a non-empty value.
 
         Args:
@@ -132,18 +205,36 @@ class PatternTemplate:
         Returns:
             Template with conditionals processed
         """
-        # Pattern to match conditional blocks
-        pattern = re.compile(r'\{if:(\w+)\}(.*?)\{endif\}', re.DOTALL)
+        # Pattern to match conditional blocks (with optional else)
+        pattern = re.compile(r'\{if:(\w+)\}(.*?)\{(else)\}(.*?)\{endif\}|\{if:(\w+)\}(.*?)\{endif\}', re.DOTALL)
 
         def replace_conditional(match: re.Match) -> str:
-            var_name = match.group(1)
-            content = match.group(2)
+            # Handle if-else-endif pattern (groups 1-4)
+            if match.group(1):  # var_name from if-else-endif
+                var_name = match.group(1)
+                if_content = match.group(2)
+                else_content = match.group(4)
 
-            # Check if variable exists and has a non-empty value
-            if var_name in self.all_variables:
-                value = self.all_variables[var_name](audio_file)
-                if value and str(value).strip():
-                    return content
+                # Check if variable exists and has a non-empty value
+                if var_name in self.all_variables:
+                    value = self.all_variables[var_name](audio_file)
+                    if value and str(value).strip():
+                        return if_content
+
+                return else_content
+
+            # Handle if-endif pattern without else (groups 5-6)
+            if match.group(5):  # var_name from if-endif
+                var_name = match.group(5)
+                content = match.group(6)
+
+                # Check if variable exists and has a non-empty value
+                if var_name in self.all_variables:
+                    value = self.all_variables[var_name](audio_file)
+                    if value and str(value).strip():
+                        return content
+
+                return ''
 
             return ''
 
