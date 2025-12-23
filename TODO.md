@@ -738,9 +738,33 @@ music-batch-metadata /music/library --workers 8 --batch-size 200
 - [x] ✅ Create troubleshooting FAQ (docs/troubleshooting.md) - Comprehensive FAQ covering installation issues, performance problems, common errors, file organization issues, metadata problems, plugin issues, and CLI usage
 
 ### Distribution
-- [ ] 🟡 Create single-file distribution with minimal dependencies
-- [ ] 🟡 Add GitHub Actions for automated releases
-- [ ] 🟡 Implement auto-update mechanism
+- [x] ✅ Create single-file distribution with minimal dependencies (Created dist/music_organize.py - 63KB standalone script requiring only mutagen)
+- [x] ✅ **COMPLETED: Add GitHub Actions for automated releases** (2025-12-23)
+  - Created `.github/workflows/release.yml` workflow
+  - Triggers on version tags (v*.*.*) or manual dispatch
+  - Builds single-file dist and wheel, runs tests
+  - Generates changelog from git history
+  - Creates GitHub release with artifacts and checksums
+  - **Usage:** Create release by pushing version tag: `git tag v0.1.0 && git push --tags`
+- [x] ✅ **COMPLETED: Implement auto-update mechanism** (2025-12-23)
+  - **UpdateInfo class**: Version comparison with semantic versioning support
+  - **UpdateManager**: Check/install updates from GitHub releases with download fallback to urllib
+  - **UpdateNotifier**: User notifications for available updates with dismiss capability
+  - **State file tracking**: Caches update checks for 7 days (configurable)
+  - **Checksum verification**: Placeholder for SHA-256 checksum validation
+  - **Installation detection**: Automatic detection of pip, single-file, or source installations
+  - **CLI `update` command**: Full update management with flags:
+    - `--force`: Bypass cached update check
+    - `--install`: Automatically download and install updates
+    - `--dismiss`: Dismiss available update notification
+    - `--summary`: Show update information without action
+  - **Global `--no-update-check` flag**: Disable automatic update checks
+  - **Auto-check after commands**: Non-intrusive update checks after command completion
+  - **Comprehensive testing**: 30 new tests in test_update_manager.py, 5 tests in test_async_cli.py
+  - **Key files**:
+    - `src/music_organizer/update_manager.py` - Core update management system
+    - `src/music_organizer/async_cli.py` - CLI integration with update command
+    - `tests/test_update_manager.py` - Comprehensive test suite
 - [ ] 🟢 Prepare PyPI package with proper metadata
 
 ## 📋 Phase 6: Future Enhancements (Optional)
