@@ -2,12 +2,14 @@
 
 import argparse
 import asyncio
+import os
 import sys
 from pathlib import Path
 from typing import Optional, Tuple, List, Dict, Any
 from datetime import datetime
 
 from .core.enhanced_async_organizer import EnhancedAsyncMusicOrganizer
+from .utils.security import SecurityUtils, PathValidationError
 from .core.async_organizer import AsyncMusicOrganizer, organize_files_async
 from .core.metadata import MetadataHandler
 from .core.classifier import ContentClassifier
@@ -217,9 +219,13 @@ async def main():
         sys.exit(1)
 
     try:
-        # Convert paths
-        source_dir = Path(args.source).resolve()
-        target_dir = Path(args.target).resolve()
+        # Convert and validate paths with security checks
+        try:
+            source_dir = SecurityUtils.sanitize_path(Path(args.source))
+            target_dir = SecurityUtils.sanitize_path(Path(args.target))
+        except PathValidationError as e:
+            console.error(f"Path validation error: {e}")
+            sys.exit(1)
 
         # Validate directories
         if not source_dir.exists():

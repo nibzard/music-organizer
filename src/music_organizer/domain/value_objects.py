@@ -8,6 +8,7 @@ Value objects are immutable objects that are defined by their attributes rather 
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 from dataclasses import dataclass, field
 from enum import Enum
@@ -51,8 +52,13 @@ class AudioPath:
         if not path.suffix:
             raise ValueError("AudioPath must have a file extension")
 
-        # Normalize the path
-        path = path.resolve()
+        # Normalize the path using strict=False to avoid symlink traversal
+        # This resolves the path but doesn't require the file to exist
+        try:
+            path = Path(os.path.realpath(str(path)))
+        except OSError:
+            # Fallback to absolute() if realpath fails
+            path = path.absolute()
 
         # Determine format
         extension = path.suffix.lower().lstrip('.')

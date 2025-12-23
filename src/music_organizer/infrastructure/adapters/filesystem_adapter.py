@@ -13,6 +13,7 @@ from typing import List, Optional, Dict, Any, Iterator
 from concurrent.futures import ThreadPoolExecutor
 
 from ...domain.catalog import AudioPath, FileFormat
+from ...utils.security import SecurityUtils, PathValidationError
 
 
 class FilesystemAdapter:
@@ -68,11 +69,18 @@ class FilesystemAdapter:
         """
         def _copy():
             try:
+                # Security: validate paths before copying
+                SecurityUtils.is_valid_path(source)
+                SecurityUtils.is_valid_path(destination)
+
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(source, destination)
                 return True
+            except PathValidationError as e:
+                print(f"Security error copying file: {e}")
+                return False
             except Exception as e:
-                print(f"Error copying {source} to {destination}: {e}")
+                print(f"Error copying {source.name} to {destination.name}: {type(e).__name__}")
                 return False
 
         loop = asyncio.get_event_loop()
@@ -86,11 +94,18 @@ class FilesystemAdapter:
         """
         def _move():
             try:
+                # Security: validate paths before moving
+                SecurityUtils.is_valid_path(source)
+                SecurityUtils.is_valid_path(destination)
+
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.move(str(source), str(destination))
                 return True
+            except PathValidationError as e:
+                print(f"Security error moving file: {e}")
+                return False
             except Exception as e:
-                print(f"Error moving {source} to {destination}: {e}")
+                print(f"Error moving {source.name} to {destination.name}: {type(e).__name__}")
                 return False
 
         loop = asyncio.get_event_loop()
@@ -102,10 +117,16 @@ class FilesystemAdapter:
         """
         def _delete():
             try:
+                # Security: validate path before deleting
+                SecurityUtils.is_valid_path(file_path)
+
                 file_path.unlink()
                 return True
+            except PathValidationError as e:
+                print(f"Security error deleting file: {e}")
+                return False
             except Exception as e:
-                print(f"Error deleting {file_path}: {e}")
+                print(f"Error deleting {file_path.name}: {type(e).__name__}")
                 return False
 
         loop = asyncio.get_event_loop()

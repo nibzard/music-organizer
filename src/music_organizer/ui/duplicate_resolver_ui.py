@@ -43,7 +43,15 @@ class DuplicateResolverUI:
 
     def clear_screen(self):
         """Clear the terminal screen."""
-        os.system('cls' if os.name == 'nt' else 'clear')
+        import subprocess
+        try:
+            if os.name == 'nt':
+                subprocess.run(['cls'], shell=True, check=False)
+            else:
+                subprocess.run(['clear'], check=False)
+        except (OSError, subprocess.SubprocessError):
+            # Silently fail if clearing screen doesn't work
+            pass
 
     def _print_header(self, title: str):
         """Print a formatted header."""
