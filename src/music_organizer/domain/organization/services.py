@@ -17,6 +17,81 @@ from .entities import OrganizationRule, FolderStructure, MovedFile, Organization
 from .value_objects import TargetPath, OrganizationPattern, ConflictStrategy
 
 
+class RecordingLoaderService:
+    """Service for loading Recording entities from audio files.
+
+    This service bridges the catalog context (Recording entities) with the
+    organization context by extracting metadata from audio files and
+    converting them to domain Recording entities.
+    """
+
+    def __init__(self, max_workers: int = 4):
+        self._executor = ThreadPoolExecutor(max_workers=max_workers)
+        self._adapter = None  # Lazy import to avoid circular dependencies
+
+    def _get_adapter(self):
+        """Lazy load the adapter to avoid circular imports."""
+        if self._adapter is None:
+            from ...infrastructure.adapters.audio_file_adapter import AudioFileToRecordingAdapter
+            self._adapter = AudioFileToRecordingAdapter()
+        return self._adapter
+
+    async def load_from_path(self, file_path: Path) -> Optional[Any]:
+        """Load a Recording entity from a single audio file path.
+
+        Returns a catalog.Recording entity or None if the file is not supported.
+        """
+        def _load():
+            try:
+                from ...core.metadata import MetadataHandler
+                audio_file = MetadataHandler.extract_metadata(file_path)
+                return self._get_adapter().to_recording(audio_file)
+            except Exception:
+                # Skip unsupported files silently
+                return None
+
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(self._executor, _load)
+
+    async def load_from_paths(self, file_paths: List[Path]) -> List[Any]:
+        """Load Recording entities from multiple audio file paths in parallel.
+
+        Returns a list of catalog.Recording entities (unsupported files are filtered out).
+        """
+        tasks = [self.load_from_path(path) for path in file_paths]
+        results = await asyncio.gather(*tasks)
+        return [r for r in results if r is not None]
+
+    async def load_from_directory(
+        self,
+        directory: Path,
+        recursive: bool = True,
+        pattern: str = "*"
+    ) -> List[Any]:
+        """Load all Recording entities from audio files in a directory.
+
+        Args:
+            directory: The directory to scan
+            recursive: Whether to scan subdirectories
+            pattern: Glob pattern for matching files (default: all files)
+
+        Returns:
+            List of catalog.Recording entities
+        """
+        # Find all audio files
+        if recursive:
+            file_paths = list(directory.rglob(pattern))
+        else:
+            file_paths = list(directory.glob(pattern))
+
+        # Filter to audio files only
+        audio_extensions = {'.flac', '.mp3', '.m4a', '.mp4', '.ogg', '.opus',
+                           '.wav', '.aiff', '.aif', '.wma'}
+        audio_files = [p for p in file_paths if p.suffix.lower() in audio_extensions]
+
+        return await self.load_from_paths(audio_files)
+
+
 class PathGenerationService:
     """Service for generating organization paths."""
 
@@ -99,6 +174,7 @@ class OrganizationService:
     def __init__(self, max_workers: int = 4):
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
         self.path_service = PathGenerationService(max_workers)
+        self.recording_loader = RecordingLoaderService(max_workers)
 
     async def organize_file(
         self,
@@ -178,15 +254,18 @@ class OrganizationService:
         session.start()
 
         try:
-            # Get all files to organize
+            # Load all recordings from source directory using catalog context integration
+            recordings = await self.recording_loader.load_from_directory(
+                session.source_directory,
+                recursive=True
+            )
+
+            # Prepare files for organization with their metadata
             files_to_organize = []
-            for file_path in session.source_directory.rglob("*"):
-                if file_path.is_file():
-                    # TODO: Load metadata for file
-                    # For now, we'll need to integrate with catalog context
-                    metadata = None  # Would be loaded from catalog
-                    if metadata:
-                        files_to_organize.append((file_path, metadata))
+            for recording in recordings:
+                source_path = recording.path.path
+                # Use the recording's metadata for path generation
+                files_to_organize.append((source_path, recording.metadata))
 
             # Generate target paths for all files
             target_paths = await self.path_service.batch_generate_paths(
@@ -302,29 +381,34 @@ class OrganizationService:
         """Preview what would be organized without actually moving files."""
         preview_items = []
 
-        # Get all files
-        for file_path in session.source_directory.rglob("*"):
-            if file_path.is_file():
-                # TODO: Load metadata
-                metadata = None  # Would be loaded from catalog
-                if metadata:
-                    rule = session.find_rule_for_file(metadata, file_path)
-                    if rule:
-                        target_path = await self.path_service.generate_target_path(
-                            file_path,
-                            metadata,
-                            [rule],
-                            session.folder_structure,
-                            session.target_directory
-                        )
+        # Load all recordings from source directory using catalog context integration
+        recordings = await self.recording_loader.load_from_directory(
+            session.source_directory,
+            recursive=True
+        )
 
-                        if target_path:
-                            preview_items.append({
-                                "source_path": str(file_path),
-                                "target_path": str(target_path.path),
-                                "rule": rule.name,
-                                "conflict": target_path.exists,
-                                "action": "Would move" if not target_path.exists else "Would resolve conflict"
-                            })
+        # Generate preview for each recording
+        for recording in recordings:
+            source_path = recording.path.path
+            metadata = recording.metadata
+
+            rule = session.find_rule_for_file(metadata, source_path)
+            if rule:
+                target_path = await self.path_service.generate_target_path(
+                    source_path,
+                    metadata,
+                    [rule],
+                    session.folder_structure,
+                    session.target_directory
+                )
+
+                if target_path:
+                    preview_items.append({
+                        "source_path": str(source_path),
+                        "target_path": str(target_path.path),
+                        "rule": rule.name,
+                        "conflict": target_path.exists,
+                        "action": "Would move" if not target_path.exists else "Would resolve conflict"
+                    })
 
         return preview_items

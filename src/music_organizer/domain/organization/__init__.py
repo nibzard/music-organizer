@@ -10,7 +10,7 @@ This bounded context is responsible for:
 
 from .entities import OrganizationRule, FolderStructure, MovedFile, ConflictResolution
 from .value_objects import TargetPath, OrganizationPattern, ConflictStrategy
-from .services import OrganizationService, PathGenerationService
+from .services import OrganizationService, PathGenerationService, RecordingLoaderService
 
 __all__ = [
     # Entities
@@ -25,4 +25,5 @@ __all__ = [
     # Services
     "OrganizationService",
     "PathGenerationService",
+    "RecordingLoaderService",
 ]
