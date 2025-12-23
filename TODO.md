@@ -791,7 +791,11 @@ music-batch-metadata /music/library --workers 8 --batch-size 200
   - **Documentation**: `docs/cloud-storage-research.md`
 
 ### Integration
-- [ ] 🟢 Add MusicBrainz integration for metadata enrichment
+- [x] ✅ **Add MusicBrainz integration for metadata enrichment** (Already implemented)
+  - Plugin: `src/music_organizer/plugins/builtins/musicbrainz_enhancer.py`
+  - Adapter: `src/music_organizer/infrastructure/external/musicbrainz_adapter.py`
+  - AcoustId support: `src/music_organizer/infrastructure/external/acoustid_adapter.py`
+  - Features: rate limiting, caching, fuzzy search, release lookup, artist search
 - [ ] 🟢 Implement Last.fm scrobbling integration
 - [ ] 🟢 Create Kodi/Jellyfin compatibility mode
 - [ ] 🟢 Add Spotify playlist import/export
