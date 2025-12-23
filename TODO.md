@@ -804,7 +804,10 @@ music-batch-metadata /music/library --workers 8 --batch-size 200
   - **Findings**: All metadata available for NFO generation, plugin system ready
   - **Recommendation**: 12-16 hours for full NFO export plugin with MBID support
   - **Documentation**: `docs/kodi-jellyfin-research.md`
-- [ ] 🟢 Add Spotify playlist import/export
+- [x] ✅ **Research Spotify playlist import/export** (2025-12-23)
+  - **Findings**: M3U export exists, Spotify API requires OAuth2, track matching via similarity
+  - **Recommendation**: 15-20 hours for adapter + 3 plugins (metadata, import, export)
+  - **Documentation**: `docs/spotify-integration-research.md`
 
 ## 📝 Recent Implementations
 
