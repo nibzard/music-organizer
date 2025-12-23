@@ -781,7 +781,10 @@ music-batch-metadata /music/library --workers 8 --batch-size 200
   - **Finding**: Pure WASM not feasible due to browser limitations (no file system access, mutagen unavailable)
   - **Recommendation**: Hybrid architecture with FastAPI web service + optional Pyodide for client-side preview
   - **Documentation**: `docs/webassembly-investigation.md`
-- [ ] 🟢 Research ML-based classification improvements
+- [x] ✅ **Research ML-based classification improvements** (2025-12-23)
+  - **Findings**: 7 ML opportunities identified, from quick wins (genre) to advanced (acoustic similarity)
+  - **Recommendation**: Start with genre classifier (scikit-learn), add audio features (librosa)
+  - **Documentation**: `docs/ml-classification-research.md`
 - [ ] 🟢 Prototype cloud storage integration
 
 ### Integration
