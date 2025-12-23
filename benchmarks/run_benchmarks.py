@@ -28,8 +28,7 @@ from music_organizer.models.audio_file import AudioFile
 from music_organizer.models.config import Config
 from music_organizer.core.metadata import MetadataHandler
 from music_organizer.core.cache import SQLiteCache
-from music_organizer.core.async_organizer import AsyncOrganizer
-from music_organizer.core.organizer import Organizer
+from music_organizer.core.async_organizer import AsyncMusicOrganizer
 from music_organizer.core.cached_metadata import CachedMetadataHandler
 
 
@@ -103,10 +102,19 @@ class BenchmarkRunner:
         # Measure import and initialization time
         start_time = time.perf_counter()
 
-        # Simulate startup
-        config = Config()
+        # Simulate startup - just measure imports and basic init
         metadata_handler = MetadataHandler()
-        cache = SQLiteCache.get_instance(config.cache.db_path)
+
+        # Config needs temp dirs
+        source = self.temp_dir / "source"
+        target = self.temp_dir / "target"
+        cache_dir = self.temp_dir / "cache"
+        source.mkdir(exist_ok=True)
+        target.mkdir(exist_ok=True)
+        cache_dir.mkdir(exist_ok=True)
+        config = Config(source_directory=source, target_directory=target)
+
+        cache = SQLiteCache(cache_dir)
 
         end_time = time.perf_counter()
         startup_time = (end_time - start_time) * 1000  # Convert to ms
@@ -127,7 +135,11 @@ class BenchmarkRunner:
         """Benchmark metadata extraction performance"""
         print(f"\n📊 Benchmarking metadata extraction ({num_files} files)...")
 
-        config = Config()
+        source = self.temp_dir / "source"
+        target = self.temp_dir / "target"
+        source.mkdir(exist_ok=True)
+        target.mkdir(exist_ok=True)
+        config = Config(source_directory=source, target_directory=target)
         metadata_handler = MetadataHandler()
 
         # Get test files
@@ -150,7 +162,9 @@ class BenchmarkRunner:
         cold_rate = extracted / cold_time if cold_time > 0 else 0
 
         # Measure with cache (warm)
-        cached_handler = CachedMetadataHandler(config.cache)
+        cache_dir = self.temp_dir / "cache"
+        cache_dir.mkdir(exist_ok=True)
+        cached_handler = CachedMetadataHandler(cache_dir)
         start_time = time.perf_counter()
 
         for filepath in test_files:
@@ -193,33 +207,23 @@ class BenchmarkRunner:
 
         tracemalloc.start()
 
-        config = Config()
-        organizer = AsyncOrganizer(config)
-
         # Process a subset of files and measure memory
-        target_dir = self.temp_dir / "organized"
         test_files = list(self.temp_dir.rglob("*.mp3"))[:500]
 
-        async def run_memory_test():
-            processed = 0
-            for filepath in test_files:
-                try:
-                    # Simulate processing
-                    audio_file = AudioFile.from_path(filepath)
-                    processed += 1
+        processed = 0
+        for filepath in test_files:
+            try:
+                # Simulate processing
+                audio_file = AudioFile.from_path(filepath)
+                processed += 1
 
-                    if processed % 100 == 0:
-                        current, peak = tracemalloc.get_traced_memory()
-                        peak_mb = peak / 1024 / 1024
-                        if peak_mb > 100:  # Early stop if we exceed target
-                            break
-                except Exception:
-                    pass
-
-            return processed
-
-        # Run the test
-        processed = asyncio.run(run_memory_test())
+                if processed % 100 == 0:
+                    current, peak = tracemalloc.get_traced_memory()
+                    peak_mb = peak / 1024 / 1024
+                    if peak_mb > 100:  # Early stop if we exceed target
+                        break
+            except Exception:
+                pass
 
         current, peak = tracemalloc.get_traced_memory()
         tracemalloc.stop()
@@ -248,12 +252,16 @@ class BenchmarkRunner:
         print(f"   Peak memory: {peak_mb:.2f}MB for {processed} files")
         print(f"   Extrapolated for 10k files: {extrapolated_mb:.1f}MB (target: <100MB) {'✅' if result.passed else '❌'}")
 
-    def benchmark_full_processing(self, num_files: int = 1000):
+    async def benchmark_full_processing(self, num_files: int = 1000):
         """Benchmark end-to-end processing performance"""
         print(f"\n⚡ Benchmarking full processing pipeline ({num_files} files)...")
 
-        config = Config()
-        organizer = AsyncOrganizer(config)
+        source = self.temp_dir / "source"
+        target = self.temp_dir / "target"
+        source.mkdir(exist_ok=True)
+        target.mkdir(exist_ok=True)
+        config = Config(source_directory=source, target_directory=target)
+        organizer = AsyncMusicOrganizer(config, dry_run=True)
 
         # Prepare source and target
         source_dir = self.temp_dir
@@ -267,22 +275,13 @@ class BenchmarkRunner:
         # Measure processing time
         start_time = time.perf_counter()
 
-        async def run_organizer():
-            return await organizer.organize_files_streaming(
-                source=source_dir,
-                target=target_dir,
-                pattern="{genre}/{artist}/{album} ({year})/{track:02d} - {title}",
-                dry_run=True  # Don't actually move files for benchmark
-            )
-
-        # Run in asyncio event loop
-        result = asyncio.run(run_organizer())
+        result = await organizer.organize_files(test_files)
 
         end_time = time.perf_counter()
         processing_time = end_time - start_time
 
         # Calculate rate
-        rate = result.processed / processing_time if processing_time > 0 else 0
+        rate = result.get('processed', 0) / processing_time if processing_time > 0 else 0
 
         # Extrapolate to 10k files
         extrapolated_time = 10000 / rate if rate > 0 else float('inf')
@@ -294,15 +293,15 @@ class BenchmarkRunner:
             target=1000,  # 10k files in 10 seconds
             passed=extrapolated_time < 10,
             details={
-                "processed": result.processed,
-                "errors": result.errors,
+                "processed": result.get('processed', 0),
+                "errors": result.get('errors', []),
                 "time_seconds": processing_time,
                 "extrapolated_10k_seconds": extrapolated_time
             }
         )
 
         self.results.append(benchmark_result)
-        print(f"   Processed: {result.processed} files in {processing_time:.2f}s")
+        print(f"   Processed: {result.get('processed', 0)} files in {processing_time:.2f}s")
         print(f"   Rate: {rate:.1f} files/sec")
         print(f"   Extrapolated for 10k files: {extrapolated_time:.1f}s (target: <10s) {'✅' if benchmark_result.passed else '❌'}")
 
