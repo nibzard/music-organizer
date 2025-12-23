@@ -77,7 +77,7 @@ class GetLibraryStatisticsHandler(QueryHandler[GetLibraryStatisticsQuery, Librar
     async def handle(self, query: GetLibraryStatisticsQuery) -> LibraryStatistics:
         """Handle the get library statistics query."""
         # Get all recordings
-        recordings = await self.recording_repo.find_all()
+        recordings = [r async for r in self.recording_repo.find_all()]
 
         if not recordings:
             return LibraryStatistics(
@@ -284,7 +284,7 @@ class GetGenreDistributionHandler(QueryHandler[GetGenreDistributionQuery, Dict[s
 
     async def handle(self, query: GetGenreDistributionQuery) -> Dict[str, int]:
         """Handle the get genre distribution query."""
-        recordings = await self.recording_repo.find_all()
+        recordings = [r async for r in self.recording_repo.find_all()]
 
         genre_distribution = {}
         for recording in recordings:

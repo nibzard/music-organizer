@@ -466,6 +466,18 @@ class Metadata:
         )
         return hashlib.sha256(str(core_data).encode()).hexdigest()[:16]
 
+    def to_dict(self) -> dict:
+        """Convert metadata to dictionary."""
+        from dataclasses import asdict
+        result = asdict(self)
+        # Convert FrozenSet and ArtistName objects to serializable formats
+        result['artists'] = [str(a) for a in self.artists]
+        if self.albumartist:
+            result['albumartist'] = str(self.albumartist)
+        if self.track_number:
+            result['track_number'] = self.track_number.to_dict()
+        return result
+
     def with_field(self, **kwargs) -> Metadata:
         """Create a new Metadata with updated fields."""
         # Get current field values

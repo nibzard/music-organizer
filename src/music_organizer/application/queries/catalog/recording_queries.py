@@ -122,7 +122,7 @@ class GetRecordingsByGenreHandler(QueryHandler[GetRecordingsByGenreQuery, List[R
     async def handle(self, query: GetRecordingsByGenreQuery) -> List[Recording]:
         """Handle the get recordings by genre query."""
         # Get all recordings and filter by genre
-        all_recordings = await self.recording_repo.find_all()
+        all_recordings = [r async for r in self.recording_repo.find_all()]
         genre_lower = query.genre.lower()
 
         filtered_recordings = []
@@ -155,7 +155,7 @@ class SearchRecordingsHandler(QueryHandler[SearchRecordingsQuery, RecordingSearc
         search_term = query.search_term.lower()
 
         # Get all recordings and search
-        all_recordings = await self.recording_repo.find_all()
+        all_recordings = [r async for r in self.recording_repo.find_all()]
         matched_recordings = []
 
         for recording in all_recordings:

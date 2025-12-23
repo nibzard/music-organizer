@@ -18,7 +18,7 @@ from music_organizer.application.queries.catalog import (
     GetRecordingsByArtistQuery,
     GetLibraryStatisticsQuery
 )
-from music_organizer.domain.catalog.repositories import InMemoryRecordingRepository
+from music_organizer.infrastructure.repositories.catalog_repository import InMemoryRecordingRepository
 from music_organizer.domain.value_objects import AudioPath, Metadata
 
 
@@ -87,7 +87,7 @@ async def test_cqrs_add_and_query_recording(cqrs_components):
 
     add_command = AddRecordingCommand(
         file_path=test_file,
-        metadata=metadata
+        recording_metadata=metadata
     )
 
     # Execute command
@@ -120,7 +120,7 @@ async def test_cqrs_update_metadata(cqrs_components):
     # First add a recording
     add_command = AddRecordingCommand(
         file_path=Path("/test/artist/album/track.flac"),
-        metadata={
+        recording_metadata={
             "title": "Original Title",
             "artists": ["Original Artist"],
             "year": 2020
@@ -170,7 +170,7 @@ async def test_cqrs_query_caching(cqrs_components):
     # Add a recording
     add_command = AddRecordingCommand(
         file_path=Path("/test/artist/album/track.flac"),
-        metadata={
+        recording_metadata={
             "title": "Cache Test Song",
             "artists": ["Cache Test Artist"],
             "album": "Cache Test Album"
@@ -228,7 +228,7 @@ async def test_cqrs_library_statistics(cqrs_components):
     for data in recordings_data:
         command = AddRecordingCommand(
             file_path=data["file_path"],
-            metadata=data["metadata"]
+            recording_metadata=data["metadata"]
         )
         await command_bus.dispatch(command)
 
@@ -254,7 +254,7 @@ async def test_cqrs_command_error_handling(cqrs_components):
     # Try to add a recording with invalid metadata
     add_command = AddRecordingCommand(
         file_path=Path("/test/artist/album/track.flac"),
-        metadata={
+        recording_metadata={
             "title": "Test Song",
             "year": -1  # Invalid year
         }
@@ -277,16 +277,20 @@ async def test_cqrs_event_publishing(cqrs_components):
     # Track published events
     published_events = []
 
-    async def event_handler(event):
-        published_events.append(event)
+    class TestEventHandler:
+        async def handle(self, event):
+            published_events.append(event)
+
+        def can_handle(self, event_type: str) -> bool:
+            return True
 
     # Subscribe to recording events
-    event_bus.subscribe("RecordingAdded", type("TestHandler", (), {"handle": event_handler})())
+    event_bus.subscribe("RecordingAdded", TestEventHandler())
 
     # Add a recording
     add_command = AddRecordingCommand(
         file_path=Path("/test/artist/album/track.flac"),
-        metadata={
+        recording_metadata={
             "title": "Event Test Song",
             "artists": ["Event Test Artist"]
         }

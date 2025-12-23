@@ -36,7 +36,7 @@ from music_organizer.application.queries.catalog import (
 )
 
 # Import repositories
-from music_organizer.domain.catalog.repositories import InMemoryRecordingRepository
+from music_organizer.infrastructure.repositories.catalog_repository import InMemoryRecordingRepository
 
 # Import read model cache updater
 from music_organizer.application.read_models import ReadModelProjector
@@ -109,7 +109,7 @@ class MusicLibraryCQRS:
         """Add a new recording to the library."""
         command = AddRecordingCommand(
             file_path=file_path,
-            metadata=metadata
+            recording_metadata=metadata
         )
 
         result = await self.command_bus.dispatch(command)

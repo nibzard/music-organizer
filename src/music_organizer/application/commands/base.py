@@ -52,7 +52,7 @@ class CommandHandler(ABC, Generic[C, R]):
         pass
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class CommandResult:
     """Base result class for command execution."""
 

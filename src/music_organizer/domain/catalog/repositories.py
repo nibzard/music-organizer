@@ -50,6 +50,11 @@ class RecordingRepository(ABC):
         pass
 
     @abstractmethod
+    async def update(self, recording: Recording) -> None:
+        """Update an existing recording."""
+        pass
+
+    @abstractmethod
     async def delete(self, recording: Recording) -> None:
         """Delete a recording."""
         pass

@@ -30,7 +30,7 @@ class InMemoryRecordingRepository(RecordingRepository):
 
     async def save(self, recording: Recording) -> None:
         """Save a recording."""
-        recording_id = str(id(recording))
+        recording_id = recording.id
         self._recordings[recording_id] = recording
         self._path_index[str(recording.path.path)] = recording_id
 
@@ -102,6 +102,15 @@ class InMemoryRecordingRepository(RecordingRepository):
 
         for recording in recordings:
             yield recording
+
+    async def update(self, recording: Recording) -> None:
+        """Update an existing recording."""
+        recording_id = recording.id
+        if recording_id in self._recordings:
+            self._recordings[recording_id] = recording
+            # Update path index if path changed
+            path_str = str(recording.path.path)
+            self._path_index[path_str] = recording_id
 
     async def delete(self, recording: Recording) -> None:
         """Delete a recording."""

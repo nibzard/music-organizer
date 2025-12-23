@@ -9,7 +9,7 @@ from ....domain.catalog.repositories import RecordingRepository
 from ....domain.value_objects import Metadata
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class UpdateMetadataCommand(Command):
     """Command to update recording metadata."""
 

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any, Set, Iterator
 from datetime import datetime
 from enum import Enum
+from uuid import uuid4
 
 from ..value_objects import (
     AudioPath,
@@ -27,7 +28,7 @@ class DuplicateResolutionMode(Enum):
     KEEP_BOTH = "keep_both"
 
 
-@dataclass
+@dataclass(kw_only=True)
 class Recording:
     """
     Represents a single audio recording (a track).
@@ -37,9 +38,15 @@ class Recording:
     acoustic fingerprint and metadata.
     """
 
+    # Entity ID
+    id: str = field(default_factory=lambda: str(uuid4()))
+
     # Core identity
     path: AudioPath
     metadata: Metadata
+
+    # Timestamps
+    created_at: datetime = field(default_factory=datetime.utcnow)
 
     # Runtime state
     is_processed: bool = False
@@ -230,6 +237,30 @@ class Recording:
                     return 0.8
 
         return 0.0
+
+    def update_metadata(self, new_metadata: Metadata) -> None:
+        """Update the recording's metadata."""
+        self.metadata = new_metadata
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert recording to dictionary."""
+        return {
+            "id": self.id,
+            "path": str(self.path.path),
+            "format": self.path.format.name,
+            "size_mb": self.path.size_mb,
+            "title": self.title,
+            "artists": [str(a) for a in self.artists],
+            "album": self.album,
+            "year": self.year,
+            "genre": self.metadata.genre,
+            "track_number": self.track_number.number if self.track_number else None,
+            "duration_seconds": self.metadata.duration_seconds,
+            "bitrate": self.metadata.bitrate,
+            "is_processed": self.is_processed,
+            "is_duplicate": self.is_duplicate,
+            "created_at": self.created_at.isoformat() if self.created_at else None
+        }
 
 
 @dataclass
