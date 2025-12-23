@@ -358,6 +358,10 @@ class Metadata:
     date: Optional[str] = None
     location: Optional[str] = None
 
+    # Duplicate detection metadata
+    file_hash: Optional[str] = None
+    acoustic_fingerprint: Optional[str] = None
+
     def __post_init__(self) -> None:
         """Validate metadata after initialization."""
         # Validate year
@@ -500,7 +504,9 @@ class Metadata:
             'sample_rate': self.sample_rate,
             'channels': self.channels,
             'date': self.date,
-            'location': self.location
+            'location': self.location,
+            'file_hash': self.file_hash,
+            'acoustic_fingerprint': self.acoustic_fingerprint
         }
 
         # Convert string artists to ArtistName objects

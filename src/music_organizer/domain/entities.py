@@ -66,7 +66,9 @@ class Recording:
     @property
     def artists(self) -> List[ArtistName]:
         """Get the recording artists."""
-        return self.metadata.artists or [ArtistName("Unknown Artist")]
+        if not self.metadata.artists:
+            return [ArtistName("Unknown Artist")]
+        return list(self.metadata.artists)
 
     @property
     def primary_artist(self) -> ArtistName:
@@ -105,9 +107,18 @@ class Recording:
 
     def get_display_name(self) -> str:
         """Get human-readable display name."""
-        if self.artists and self.title:
+        # Check if we have real artists and a real title (not from filename)
+        has_real_artist = (
+            self.metadata.artists and
+            len(self.metadata.artists) > 0
+        )
+        has_real_title = self.metadata.title is not None
+
+        if has_real_artist and has_real_title:
             return f"{self.primary_artist} - {self.title}"
-        return self.title or self.path.path.name
+        if has_real_title:
+            return self.title
+        return self.path.path.name
 
     def add_genre_classification(self, genre: str) -> None:
         """Add a genre classification."""
@@ -304,7 +315,7 @@ class Release:
     def get_recording_by_track(self, track_number: TrackNumber) -> Optional[Recording]:
         """Get recording by track number."""
         for recording in self.recordings:
-            if recording.track_number and recording.track_number.equals(track_number):
+            if recording.track_number and recording.track_number == track_number:
                 return recording
         return None
 
@@ -322,20 +333,20 @@ class Release:
         processed = set()
 
         for i, recording1 in enumerate(self.recordings):
-            if recording1 in processed:
+            if id(recording1) in processed:
                 continue
 
             group = [recording1]
-            processed.add(recording1)
+            processed.add(id(recording1))
 
             for recording2 in self.recordings[i+1:]:
-                if recording2 in processed:
+                if id(recording2) in processed:
                     continue
 
                 similarity = recording1.calculate_similarity(recording2)
                 if similarity >= similarity_threshold:
                     group.append(recording2)
-                    processed.add(recording2)
+                    processed.add(id(recording2))
 
             if len(group) > 1:
                 groups.append(group)
@@ -349,6 +360,9 @@ class Release:
             self.year = other.year
         if not self.genre and other.genre:
             self.genre = other.genre
+        # Prefer the larger total_tracks (likely an explicitly set value)
+        if other.total_tracks and (not self.total_tracks or other.total_tracks > self.total_tracks):
+            self.total_tracks = other.total_tracks
 
         # Add unique recordings
         for recording in other.recordings:
@@ -456,7 +470,7 @@ class Collection:
         filtered = []
 
         for release in self.releases:
-            if artist_str in release.primary_artist.lower():
+            if artist_str in str(release.primary_artist).lower():
                 filtered.append(release)
 
         return filtered
@@ -540,21 +554,21 @@ class AudioLibrary:
         processed = set()
 
         for recording in self.get_all_recordings():
-            if recording in processed or recording.is_duplicate:
+            if id(recording) in processed or recording.is_duplicate:
                 continue
 
             duplicate_group = [recording]
-            processed.add(recording)
+            processed.add(id(recording))
 
             # Find all similar recordings
             for other in self.get_all_recordings():
-                if other in processed or other == recording:
+                if id(other) in processed or other == recording:
                     continue
 
                 similarity = recording.calculate_similarity(other)
                 if similarity >= similarity_threshold:
                     duplicate_group.append(other)
-                    processed.add(other)
+                    processed.add(id(other))
 
             # Only add groups with actual duplicates
             if len(duplicate_group) > 1:
@@ -623,7 +637,7 @@ class AudioLibrary:
 
         for collection in self.collections:
             for release in collection.releases:
-                if artist_str in release.primary_artist.lower():
+                if artist_str in str(release.primary_artist).lower():
                     matching_releases.append(release)
 
         return matching_releases

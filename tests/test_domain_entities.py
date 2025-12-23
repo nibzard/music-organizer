@@ -2,7 +2,7 @@
 
 import pytest
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from music_organizer.domain.entities import (
     Recording,
@@ -31,7 +31,7 @@ def sample_metadata():
     """Create sample metadata."""
     return Metadata(
         title="Test Song",
-        artists=[ArtistName("Test Artist")],
+        artists=frozenset([ArtistName("Test Artist")]),
         album="Test Album",
         year=2023,
         track_number=TrackNumber(1),
@@ -92,7 +92,7 @@ class TestRecording:
 
     def test_get_display_name_no_title(self, sample_audio_path):
         """Test display name with no title."""
-        metadata = Metadata(artists=[ArtistName("Test Artist")])
+        metadata = Metadata(artists=frozenset([ArtistName("Test Artist")]))
         recording = Recording(path=sample_audio_path, metadata=metadata)
         assert recording.get_display_name() == "01.flac"
 
@@ -120,7 +120,7 @@ class TestRecording:
 
     def test_duplicate_tracking(self, sample_recording, sample_audio_path):
         """Test duplicate tracking."""
-        other_metadata = Metadata(title="Test Song", artists=[ArtistName("Test Artist")])
+        other_metadata = Metadata(title="Test Song", artists=frozenset([ArtistName("Test Artist")]))
         other_recording = Recording(path=sample_audio_path, metadata=other_metadata)
 
         assert not sample_recording.is_duplicate
@@ -170,7 +170,7 @@ class TestRecording:
         # Similar but not identical metadata
         other_metadata = Metadata(
             title="Test Song",  # Same title
-            artists=[ArtistName("Test Artist")],  # Same artist
+            artists=frozenset([ArtistName("Test Artist")]),  # Same artist
             album="Test Album",  # Same album
             duration_seconds=185.0,  # Similar duration
         )
@@ -183,7 +183,7 @@ class TestRecording:
         """Test similarity calculation for no match."""
         other_metadata = Metadata(
             title="Completely Different",
-            artists=[ArtistName("Other Artist")],
+            artists=frozenset([ArtistName("Other Artist")]),
             album="Other Album",
             duration_seconds=120.0,
         )
@@ -270,7 +270,7 @@ class TestRelease:
         for i in range(1, 4):
             metadata = Metadata(
                 title=f"Track {i}",
-                artists=[ArtistName("Test Artist")],
+                artists=frozenset([ArtistName("Test Artist")]),
                 track_number=TrackNumber(i),
             )
             recording = Recording(path=sample_audio_path, metadata=metadata)
@@ -304,9 +304,11 @@ class TestRelease:
         ]
 
         for track_num, title in tracks:
-            metadata = Metadata(title=title, artists=[ArtistName("Test Artist")])
-            if track_num:
-                metadata.track_number = TrackNumber(track_num)
+            metadata = Metadata(
+                title=title,
+                artists=frozenset([ArtistName("Test Artist")]),
+                track_number=TrackNumber(track_num) if track_num else None,
+            )
             recording = Recording(path=sample_audio_path, metadata=metadata)
             release.add_recording(recording)
 
@@ -327,18 +329,21 @@ class TestRelease:
         # Add duplicates
         metadata1 = Metadata(
             title="Same Song",
-            artists=[ArtistName("Test Artist")],
+            artists=frozenset([ArtistName("Test Artist")]),
             file_hash="hash1",
+            duration_seconds=180.0,
         )
         metadata2 = Metadata(
             title="Same Song",
-            artists=[ArtistName("Test Artist")],
+            artists=frozenset([ArtistName("Test Artist")]),
             file_hash="hash2",
+            duration_seconds=180.0,
         )
         metadata3 = Metadata(
             title="Different Song",
-            artists=[ArtistName("Test Artist")],
+            artists=frozenset([ArtistName("Test Artist")]),
             file_hash="hash3",
+            duration_seconds=180.0,
         )
 
         recording1 = Recording(path=sample_audio_path, metadata=metadata1)
@@ -378,8 +383,8 @@ class TestRelease:
         )
 
         # Add recordings to both
-        metadata1 = Metadata(title="Song 1", artists=[ArtistName("Artist")])
-        metadata2 = Metadata(title="Song 2", artists=[ArtistName("Artist")])
+        metadata1 = Metadata(title="Song 1", artists=frozenset([ArtistName("Artist")]))
+        metadata2 = Metadata(title="Song 2", artists=frozenset([ArtistName("Artist")]))
         recording1 = Recording(path=sample_audio_path, metadata=metadata1)
         recording2 = Recording(path=sample_audio_path, metadata=metadata2)
 
@@ -494,7 +499,7 @@ class TestCollection:
         release1 = Release(title="Album 1", primary_artist=ArtistName("Artist 1"))
         release2 = Release(title="Album 2", primary_artist=ArtistName("Artist 2"))
 
-        metadata2 = Metadata(title="Song 2", artists=[ArtistName("Artist 2")])
+        metadata2 = Metadata(title="Song 2", artists=frozenset([ArtistName("Artist 2")]))
         recording2 = Recording(path=sample_audio_path, metadata=metadata2)
 
         release1.add_recording(sample_recording)
@@ -627,14 +632,14 @@ class TestAudioLibrary:
         library = AudioLibrary(name="Test", root_path=Path("/test"))
 
         # Add standalone recording
-        standalone_metadata = Metadata(title="Standalone", artists=[ArtistName("Artist")])
+        standalone_metadata = Metadata(title="Standalone", artists=frozenset([ArtistName("Artist")]))
         standalone = Recording(path=sample_audio_path, metadata=standalone_metadata)
         library.add_standalone_recording(standalone)
 
         # Add recording in collection
         collection = Collection(name="Test")
         release = Release(title="Album", primary_artist=ArtistName("Artist"))
-        album_metadata = Metadata(title="Album Track", artists=[ArtistName("Artist")])
+        album_metadata = Metadata(title="Album Track", artists=frozenset([ArtistName("Artist")]))
         album_track = Recording(path=sample_audio_path, metadata=album_metadata)
         release.add_recording(album_track)
         collection.add_release(release)
@@ -653,18 +658,21 @@ class TestAudioLibrary:
         # Add duplicate recordings
         metadata1 = Metadata(
             title="Same Song",
-            artists=[ArtistName("Artist")],
+            artists=frozenset([ArtistName("Artist")]),
             file_hash="hash1",
+            duration_seconds=180.0,
         )
         metadata2 = Metadata(
             title="Same Song",
-            artists=[ArtistName("Artist")],
+            artists=frozenset([ArtistName("Artist")]),
             file_hash="hash2",
+            duration_seconds=180.0,
         )
         metadata3 = Metadata(
             title="Different Song",
-            artists=[ArtistName("Artist")],
+            artists=frozenset([ArtistName("Artist")]),
             file_hash="hash3",
+            duration_seconds=180.0,
         )
 
         recording1 = Recording(path=sample_audio_path, metadata=metadata1)
@@ -686,20 +694,25 @@ class TestAudioLibrary:
         assert recording2 in duplicates[key]
         assert recording3 not in duplicates[key]
 
-    def test_get_statistics(self, sample_audio_path):
+    def test_get_statistics(self, sample_audio_path, tmp_path):
         """Test getting library statistics."""
         library = AudioLibrary(name="Test", root_path=Path("/test"))
 
         # Add diverse recordings
         recordings = []
         for i in range(5):
+            # Create temporary files with enough size to register in GB
+            temp_file = tmp_path / f"song_{i}.flac"
+            # Write ~1MB per file so total size is ~5MB = 0.005GB
+            temp_file.write_bytes(b"fake audio data" * (100000 + i * 10000))
+
             metadata = Metadata(
                 title=f"Song {i}",
-                artists=[ArtistName(f"Artist {i % 2}")],  # 2 different artists
+                artists=frozenset([ArtistName(f"Artist {i % 2}")]),  # 2 different artists
                 year=2020 + (i % 3),  # 3 different years
                 duration_seconds=180 + i * 10,
             )
-            recording = Recording(path=sample_audio_path, metadata=metadata)
+            recording = Recording(path=AudioPath(str(temp_file)), metadata=metadata)
             recording.add_genre_classification("rock" if i % 2 == 0 else "pop")
             recordings.append(recording)
             library.add_standalone_recording(recording)
@@ -739,7 +752,7 @@ class TestAudioLibrary:
 
         assert library.scan_count == 1
         assert library.last_scanned is not None
-        assert library.last_scanned > datetime.now() - datetime.timedelta(seconds=1)
+        assert library.last_scanned > datetime.now() - timedelta(seconds=1)
 
         # Multiple scans
         library.mark_scan_completed()
@@ -777,13 +790,13 @@ class TestAudioLibrary:
         recent_file.write_bytes(b"fake audio data")
 
         # Add recordings
-        old_metadata = Metadata(title="Old Song", artists=[ArtistName("Artist")])
+        old_metadata = Metadata(title="Old Song", artists=frozenset([ArtistName("Artist")]))
         old_recording = Recording(
             path=AudioPath(str(sample_audio_path.path)),  # Use existing path
             metadata=old_metadata,
         )
 
-        recent_metadata = Metadata(title="New Song", artists=[ArtistName("Artist")])
+        recent_metadata = Metadata(title="New Song", artists=frozenset([ArtistName("Artist")]))
         recent_recording = Recording(
             path=AudioPath(str(recent_file)),  # Use recent temp file
             metadata=recent_metadata,
