@@ -100,8 +100,9 @@ class MagicMusicOrganizer(AsyncMusicOrganizer):
         audio_files = []
         async for file_path in self.scan_directory(source_dir):
             try:
-                audio_file = await self.extract_metadata(file_path)
-                audio_files.append(audio_file)
+                audio_file = await self._process_file(file_path)
+                if audio_file:
+                    audio_files.append(audio_file)
 
                 # Limit sample size for performance
                 if sample_size and len(audio_files) >= sample_size:
@@ -363,7 +364,14 @@ class MagicMusicOrganizer(AsyncMusicOrganizer):
         # Extract metadata values
         title = getattr(metadata, 'title', 'Unknown Title')
         artists = getattr(metadata, 'artists', [])
-        artist = artists[0] if artists else 'Unknown Artist'
+        # Handle frozenset or list of artists
+        if artists:
+            if isinstance(artists, (frozenset, set)):
+                artist = next(iter(artists), 'Unknown Artist')
+            else:
+                artist = artists[0] if artists else 'Unknown Artist'
+        else:
+            artist = 'Unknown Artist'
         album = getattr(metadata, 'album', 'Unknown Album')
         year = getattr(metadata, 'year', None)
         genre = getattr(metadata, 'genre', 'Unknown')
@@ -375,7 +383,14 @@ class MagicMusicOrganizer(AsyncMusicOrganizer):
         album_str = str(album) if album else 'Unknown Album'
         year_str = str(year) if year else ''
         genre_str = str(genre) if genre else 'Unknown'
-        track_str = f"{track_number:02d}" if track_number else ''
+        # Handle TrackNumber object or int
+        if track_number:
+            if hasattr(track_number, 'number'):
+                track_str = track_number.formatted()
+            else:
+                track_str = f"{int(track_number):02d}"
+        else:
+            track_str = ''
 
         # Calculate derived values
         decade = self._calculate_decade(year) if year else 'unknown'

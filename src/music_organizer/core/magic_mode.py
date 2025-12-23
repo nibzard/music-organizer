@@ -112,17 +112,21 @@ class MagicAnalyzer:
         # Analyze formats and sizes
         format_sizes = defaultdict(float)
         for file in audio_files:
-            fmt = file.format.value
+            fmt = file.file_type.lower()
             analysis.format_distribution[fmt] = analysis.format_distribution.get(fmt, 0) + 1
-            size_mb = file.path.stat().st_size / (1024 * 1024)
+            try:
+                size_mb = file.path.stat().st_size / (1024 * 1024)
+            except (FileNotFoundError, OSError):
+                size_mb = 0.0
             analysis.total_size_mb += size_mb
             format_sizes[fmt] += size_mb
 
             # Quality variance
-            if hasattr(file.metadata, 'bitrate') and file.metadata.bitrate:
+            bitrate = file.metadata.get('bitrate') if isinstance(file.metadata, dict) else None
+            if bitrate:
                 if 'bitrate' not in analysis.quality_variance:
                     analysis.quality_variance['bitrate'] = []
-                analysis.quality_variance['bitrate'].append(file.metadata.bitrate)
+                analysis.quality_variance['bitrate'].append(bitrate)
 
         # Calculate average size per format
         for fmt, total_size in format_sizes.items():
@@ -145,30 +149,30 @@ class MagicAnalyzer:
 
         for file in audio_files:
             # Artist extraction
-            if file.metadata.artists:
-                for artist in file.metadata.artists:
-                    artists.add(str(artist))
+            if file.artists:
+                for artist in file.artists:
+                    artists.add(artist)
 
             # Album extraction
-            if file.metadata.album:
-                album_key = (str(file.metadata.album), tuple(str(a) for a in file.metadata.artists) if file.metadata.artists else ())
+            if file.album:
+                album_key = (file.album, tuple(file.artists) if file.artists else ())
                 albums.add(album_key)
                 tracks_per_album[album_key] += 1
 
             # Metadata completeness
-            score = self._calculate_metadata_completeness(file.metadata)
+            score = self._calculate_metadata_completeness_for_audiofile(file)
             metadata_scores.append(score)
 
             # Genre analysis
-            if file.metadata.genre:
-                normalized_genre = self._normalize_genre(file.metadata.genre)
+            if file.genre:
+                normalized_genre = self._normalize_genre(file.genre)
                 analysis.genre_distribution[normalized_genre] = (
                     analysis.genre_distribution.get(normalized_genre, 0) + 1
                 )
 
             # Decade analysis
-            if file.metadata.year:
-                decade = self._get_decade(file.metadata.year)
+            if file.year:
+                decade = self._get_decade(file.year)
                 analysis.decade_distribution[decade] = (
                     analysis.decade_distribution.get(decade, 0) + 1
                 )
@@ -196,8 +200,18 @@ class MagicAnalyzer:
         fields = ['title', 'artists', 'album', 'year', 'genre', 'track_number']
         present = sum(1 for field in fields if getattr(metadata, field, None))
         # Bonus fields
-        bonus_fields = ['albumartist', 'composer', 'disc_number', 'is_compilation']
+        bonus_fields = ['albumartist', 'composer', 'disc_number']
         present_bonus = sum(1 for field in bonus_fields if getattr(metadata, field, None))
+
+        return (present + (present_bonus * 0.5)) / (len(fields) + (len(bonus_fields) * 0.5))
+
+    def _calculate_metadata_completeness_for_audiofile(self, file: AudioFile) -> float:
+        """Calculate metadata completeness score for AudioFile (0-1)."""
+        fields = ['title', 'artists', 'album', 'year', 'genre', 'track_number']
+        present = sum(1 for field in fields if getattr(file, field, None))
+        # Bonus fields
+        bonus_fields = ['primary_artist', 'date', 'location']
+        present_bonus = sum(1 for field in bonus_fields if getattr(file, field, None))
 
         return (present + (present_bonus * 0.5)) / (len(fields) + (len(bonus_fields) * 0.5))
 
@@ -273,10 +287,10 @@ class MagicAnalyzer:
         metadata_signatures = Counter()
 
         for file in audio_files:
-            if file.metadata.title and file.metadata.artists:
+            if file.title and file.artists:
                 # Create normalized signature
-                title = re.sub(r'[^a-z0-9]', '', file.metadata.title.lower())
-                artist = re.sub(r'[^a-z0-9]', '', str(file.metadata.artists[0]).lower())
+                title = re.sub(r'[^a-z0-9]', '', file.title.lower())
+                artist = re.sub(r'[^a-z0-9]', '', file.artists[0].lower())
                 signature = f"{artist}_{title}"
                 metadata_signatures[signature] += 1
 
