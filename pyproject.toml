@@ -4,26 +4,91 @@ version = "0.1.0"
 description = "Organize music library with metadata-aware categorization"
 readme = "README.md"
 requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "Niko", email = "noreply@github.com" }
+]
+maintainers = [
+    { name = "Niko", email = "noreply@github.com" }
+]
+keywords = [
+    "music",
+    "organizer",
+    "audio",
+    "metadata",
+    "flac",
+    "mp3",
+    "music-library",
+    "tagging",
+    "classification",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Sound/Audio",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
 dependencies = [
     "jsonschema>=4.25.1",
     "mutagen>=1.47.0",
     "psutil>=5.9.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/nibzard/music-organizer"
+Documentation = "https://github.com/nibzard/music-organizer#readme"
+Repository = "https://github.com/nibzard/music-organizer"
+Issues = "https://github.com/nibzard/music-organizer/issues"
+Changelog = "https://github.com/nibzard/music-organizer/blob/main/CHANGELOG.md"
+
 [dependency-groups]
 dev = [
     "black>=25.12.0",
+    "build>=1.3.0",
     "hypothesis>=6.122.0",
     "mypy>=1.19.0",
     "pytest>=9.0.2",
     "pytest-asyncio>=0.24.0",
     "pytest-cov>=7.0.0",
     "ruff>=0.14.8",
+    "twine>=6.2.0",
 ]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build]
+include = [
+    "src/music_organizer/**/*.py",
+    "config/**/*.yaml",
+    "config/**/*.json",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+]
+exclude = [
+    "**/__pycache__",
+    "**/*.py[cod]",
+    "**/.pytest_cache",
+    "**/.hypothesis",
+    "**/.coverage",
+    "**/.venv",
+    "**/venv",
+    "**/uv.lock",
+    "**/test_*.py",
+]
+artifacts = [
+    "config/**/*.yaml",
+    "config/**/*.json",
+]
 
 [project.scripts]
 music-organize = "music_organizer.cli:main"
