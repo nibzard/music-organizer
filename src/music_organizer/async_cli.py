@@ -17,6 +17,7 @@ from .models.config import Config, load_config
 from .exceptions import MusicOrganizerError
 from .progress_tracker import IntelligentProgressTracker, ProgressStage
 from .async_progress_renderer import AsyncProgressRenderer
+from .update_manager import check_for_updates_cli, check_updates_on_startup
 
 
 class SimpleProgress:
@@ -1164,6 +1165,17 @@ def create_async_cli():
     clear_parser = cache_subparsers.add_parser('clear', help='Clear all cache entries')
     clear_parser.add_argument('--confirm', action='store_true', help='Confirm clearing all cache')
 
+    # Update command
+    update_parser = subparsers.add_parser('update', help='Check for and install updates')
+    update_parser.add_argument('--force', action='store_true', help='Force check even if interval has not passed')
+    update_parser.add_argument('--install', action='store_true', help='Download and install the update')
+    update_parser.add_argument('--dismiss', action='store_true', help='Dismiss current update notification')
+    update_parser.add_argument('--summary', action='store_true', help='Show update status summary')
+    update_parser.add_argument('--debug', action='store_true', help='Enable debug output')
+
+    # Add global option to disable update check
+    parser.add_argument('--no-update-check', action='store_true', help='Disable automatic update check on startup')
+
     # Add version
     parser.add_argument('--version', action='version', version='%(prog)s 0.1.0')
 
@@ -1232,11 +1244,30 @@ def create_async_cli():
             ))
         else:
             parser.error("Cache command required")
+    elif args.command == 'update':
+        return asyncio.run(check_for_updates_cli(
+            force=getattr(args, 'force', False),
+            install=getattr(args, 'install', False),
+            dismiss=getattr(args, 'dismiss', False),
+            show_summary=getattr(args, 'summary', False)
+        ))
 
     return 0
 
 
 def main():
     """Entry point for async CLI."""
-    import sys
-    sys.exit(create_async_cli())
+    # Check if update check is disabled
+    no_update_check = '--no-update-check' in sys.argv or 'update' in sys.argv
+
+    # Run the CLI
+    exit_code = create_async_cli()
+
+    # Check for updates after command completes (if not disabled)
+    if not no_update_check and exit_code == 0:
+        try:
+            asyncio.run(check_updates_on_startup())
+        except Exception:
+            pass  # Silently fail for update check
+
+    sys.exit(exit_code)

@@ -581,6 +581,50 @@ class TestCreateAsyncCLI:
                     result = create_async_cli()
                     assert result == 0
 
+    def test_parser_update_command_summary(self):
+        """Test parsing update command with summary flag."""
+        with patch('sys.argv', ['music-organize-async', 'update', '--summary']):
+            with patch('music_organizer.async_cli.check_for_updates_cli', return_value=0):
+                with patch('asyncio.run', return_value=0):
+                    result = create_async_cli()
+                    assert result == 0
+
+    def test_parser_update_command_force(self):
+        """Test parsing update command with force flag."""
+        with patch('sys.argv', ['music-organize-async', 'update', '--force']):
+            with patch('music_organizer.async_cli.check_for_updates_cli', return_value=0):
+                with patch('asyncio.run', return_value=0):
+                    result = create_async_cli()
+                    assert result == 0
+
+    def test_parser_update_command_install(self):
+        """Test parsing update command with install flag."""
+        with patch('sys.argv', ['music-organize-async', 'update', '--install']):
+            with patch('music_organizer.async_cli.check_for_updates_cli', return_value=0):
+                with patch('asyncio.run', return_value=0):
+                    result = create_async_cli()
+                    assert result == 0
+
+    def test_parser_update_command_dismiss(self):
+        """Test parsing update command with dismiss flag."""
+        with patch('sys.argv', ['music-organize-async', 'update', '--dismiss']):
+            with patch('music_organizer.async_cli.check_for_updates_cli', return_value=0):
+                with patch('asyncio.run', return_value=0):
+                    result = create_async_cli()
+                    assert result == 0
+
+    def test_no_update_check_flag(self):
+        """Test --no-update-check flag is recognized."""
+        with patch('sys.argv', ['music-organize-async', '--no-update-check', 'organize', '/src', '/tgt']):
+            with patch('music_organizer.async_cli.AsyncMusicCLI') as mock_cli_class:
+                mock_cli = AsyncMock()
+                mock_cli.organize.return_value = 0
+                mock_cli_class.return_value = mock_cli
+
+                with patch('asyncio.run', return_value=0):
+                    result = create_async_cli()
+                    assert result == 0
+
 
 class TestMainFunction:
     """Test main entry point."""
