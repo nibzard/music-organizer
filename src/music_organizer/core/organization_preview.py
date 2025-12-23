@@ -276,7 +276,7 @@ class OrganizationPreview:
             'files': [],
             'size_mb': 0.0,
             'content_types': Counter(),
-            'formats': Counter()
+            'file_types': Counter()
         })
 
         for op in self.operations:
@@ -294,17 +294,34 @@ class OrganizationPreview:
         # Build tree structure
         root_path = self.config.target_directory
 
-        def create_directory_preview(path: Path) -> DirectoryPreview:
+        # Get all unique directory paths from operations, including intermediate ancestors
+        all_dirs = set(dir_structure.keys())
+        for dir_path in list(dir_structure.keys()):
+            # Add all ancestor directories up to (but not including) root
+            current = dir_path
+            while current != root_path and current.parent != root_path and current.parent != current:
+                current = current.parent
+                all_dirs.add(current)
+
+        def create_directory_preview(path: Path, visited: set = None) -> DirectoryPreview:
+            if visited is None:
+                visited = set()
+            if path in visited or path not in all_dirs and path != root_path:
+                return None
+            visited.add(path)
+
             # Check if this directory will have files
             files_data = dir_structure.get(path, {})
             is_new = not path.exists() if path != root_path else False
             is_empty = len(files_data.get('files', [])) == 0
 
-            # Find subdirectories
+            # Find immediate subdirectories (direct children in all_dirs)
             subdirs = []
-            for dir_path in dir_structure.keys():
-                if dir_path.parent == path:
-                    subdirs.append(create_directory_preview(dir_path))
+            for dir_path in all_dirs:
+                if dir_path != path and dir_path.parent == path:
+                    subdir = create_directory_preview(dir_path, visited)
+                    if subdir:
+                        subdirs.append(subdir)
 
             return DirectoryPreview(
                 path=path,
@@ -469,6 +486,9 @@ class OrganizationPreview:
 
     def export_preview(self, output_path: Path) -> None:
         """Export preview data to JSON file."""
+        # Convert file_types keys from FileFormat enum to string
+        file_types_str = {str(k.value): v for k, v in self.statistics.file_types.items()}
+
         preview_data = {
             "timestamp": datetime.now().isoformat(),
             "statistics": {
@@ -481,8 +501,8 @@ class OrganizationPreview:
                 "organization_score": self.statistics.organization_score,
                 "estimated_time_minutes": self.statistics.estimated_time_minutes,
                 "content_types": self.statistics.content_types,
-                "file_types": self.statistics.file_types,
-                "top_artists": self.statistics.top_artists
+                "file_types": file_types_str,
+                "top_artists": [(str(a), c) for a, c in self.statistics.top_artists]
             },
             "operations": [
                 {
