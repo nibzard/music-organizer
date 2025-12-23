@@ -171,7 +171,7 @@ async def run_dashboard(args: argparse.Namespace):
 
         if args.genre_analysis:
             # Genre analysis is part of overview, but we can focus on it
-            from .async_progress_renderer import SimpleConsole
+            from .console_utils import SimpleConsole
             console = SimpleConsole()
             console.rule("🎸 DETAILED GENRE ANALYSIS")
 
@@ -181,7 +181,7 @@ async def run_dashboard(args: argparse.Namespace):
             dashboard._print_genre_section(stats)
 
         if args.quality_only:
-            from .async_progress_renderer import SimpleConsole
+            from .console_utils import SimpleConsole
             console = SimpleConsole()
             console.rule("🎯 QUALITY ANALYSIS")
 
@@ -191,7 +191,7 @@ async def run_dashboard(args: argparse.Namespace):
             dashboard._print_quality_section(stats)
 
         if args.format_only:
-            from .async_progress_renderer import SimpleConsole
+            from .console_utils import SimpleConsole
             console = SimpleConsole()
             console.rule("🎵 FORMAT DISTRIBUTION")
 

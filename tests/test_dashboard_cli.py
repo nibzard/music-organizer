@@ -5,7 +5,7 @@ import argparse
 import tempfile
 import shutil
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 
 from music_organizer.dashboard_cli import create_parser, run_dashboard, main
 
@@ -106,8 +106,10 @@ class TestDashboardCLI:
         parser = create_parser()
         args = parser.parse_args([str(temp_library), "--overview"])
 
-        with patch('music_organizer.dashboard.StatisticsDashboard') as mock_dashboard_class:
+        with patch('music_organizer.dashboard_cli.StatisticsDashboard') as mock_dashboard_class:
             mock_dashboard = MagicMock()
+            mock_dashboard.initialize = AsyncMock()
+            mock_dashboard.show_library_overview = AsyncMock()
             mock_dashboard_class.return_value = mock_dashboard
 
             result = await run_dashboard(args)
@@ -125,13 +127,16 @@ class TestDashboardCLI:
         parser = create_parser()
         args = parser.parse_args([str(temp_library), "--artist", "The Beatles"])
 
-        with patch('music_organizer.dashboard.StatisticsDashboard') as mock_dashboard_class:
+        with patch('music_organizer.dashboard_cli.StatisticsDashboard') as mock_dashboard_class:
             mock_dashboard = MagicMock()
+            mock_dashboard.initialize = AsyncMock()
+            mock_dashboard.show_artist_details = AsyncMock()
             mock_dashboard_class.return_value = mock_dashboard
 
             result = await run_dashboard(args)
 
             # Verify artist analysis was called
+            mock_dashboard.initialize.assert_called_once_with(temp_library)
             mock_dashboard.show_artist_details.assert_called_once_with("The Beatles")
 
             assert result == 0
@@ -143,13 +148,16 @@ class TestDashboardCLI:
         export_path = temp_library / "stats.json"
         args = parser.parse_args([str(temp_library), "--export", str(export_path)])
 
-        with patch('music_organizer.dashboard.StatisticsDashboard') as mock_dashboard_class:
+        with patch('music_organizer.dashboard_cli.StatisticsDashboard') as mock_dashboard_class:
             mock_dashboard = MagicMock()
+            mock_dashboard.initialize = AsyncMock()
+            mock_dashboard.export_statistics = AsyncMock()
             mock_dashboard_class.return_value = mock_dashboard
 
             result = await run_dashboard(args)
 
             # Verify export was called
+            mock_dashboard.initialize.assert_called_once_with(temp_library)
             mock_dashboard.export_statistics.assert_called_once_with(export_path)
 
             assert result == 0
@@ -161,16 +169,20 @@ class TestDashboardCLI:
         export_path = temp_library / "stats.csv"
         args = parser.parse_args([str(temp_library), "--export", str(export_path), "--format", "csv"])
 
-        with patch('music_organizer.dashboard.StatisticsDashboard') as mock_dashboard_class:
+        with patch('music_organizer.dashboard_cli.StatisticsDashboard') as mock_dashboard_class:
             mock_dashboard = MagicMock()
-            mock_config = MagicMock()
+            mock_dashboard.initialize = AsyncMock()
+            mock_dashboard.export_statistics = AsyncMock()
             mock_dashboard_class.return_value = mock_dashboard
+            mock_config = MagicMock()
+            mock_config.export_format = "csv"
             mock_dashboard.config = mock_config
 
             result = await run_dashboard(args)
 
             # Verify config was updated and export was called
             assert mock_config.export_format == "csv"
+            mock_dashboard.initialize.assert_called_once_with(temp_library)
             mock_dashboard.export_statistics.assert_called_once_with(export_path)
 
             assert result == 0
@@ -181,8 +193,9 @@ class TestDashboardCLI:
         parser = create_parser()
         args = parser.parse_args([str(temp_library), "--interactive"])
 
-        with patch('music_organizer.dashboard.StatisticsDashboard') as mock_dashboard_class:
+        with patch('music_organizer.dashboard_cli.StatisticsDashboard') as mock_dashboard_class:
             mock_dashboard = MagicMock()
+            mock_dashboard.interactive_dashboard = AsyncMock()
             mock_dashboard_class.return_value = mock_dashboard
 
             result = await run_dashboard(args)
@@ -198,8 +211,9 @@ class TestDashboardCLI:
         parser = create_parser()
         args = parser.parse_args([str(temp_library)])  # No specific options
 
-        with patch('music_organizer.dashboard.StatisticsDashboard') as mock_dashboard_class:
+        with patch('music_organizer.dashboard_cli.StatisticsDashboard') as mock_dashboard_class:
             mock_dashboard = MagicMock()
+            mock_dashboard.interactive_dashboard = AsyncMock()
             mock_dashboard_class.return_value = mock_dashboard
 
             result = await run_dashboard(args)
@@ -215,7 +229,7 @@ class TestDashboardCLI:
         parser = create_parser()
         args = parser.parse_args([str(temp_library), "--overview"])
 
-        with patch('music_organizer.dashboard.StatisticsDashboard') as mock_dashboard_class:
+        with patch('music_organizer.dashboard_cli.StatisticsDashboard') as mock_dashboard_class:
             mock_dashboard = MagicMock()
             mock_dashboard.initialize.side_effect = KeyboardInterrupt()
 
@@ -228,7 +242,7 @@ class TestDashboardCLI:
         parser = create_parser()
         args = parser.parse_args([str(temp_library), "--overview"])
 
-        with patch('music_organizer.dashboard.StatisticsDashboard') as mock_dashboard_class:
+        with patch('music_organizer.dashboard_cli.StatisticsDashboard') as mock_dashboard_class:
             mock_dashboard = MagicMock()
             mock_dashboard.initialize.side_effect = Exception("Test error")
 
@@ -241,15 +255,20 @@ class TestDashboardCLI:
         parser = create_parser()
         args = parser.parse_args([str(temp_library), "--quality-only"])
 
-        with patch('music_organizer.dashboard.StatisticsDashboard') as mock_dashboard_class:
+        with patch('music_organizer.dashboard_cli.StatisticsDashboard') as mock_dashboard_class:
             mock_dashboard = MagicMock()
+            mock_dashboard.initialize = AsyncMock()
+            mock_dashboard.query_bus = MagicMock()
+            mock_dashboard.query_bus.dispatch = AsyncMock()
+            mock_dashboard._print_quality_section = MagicMock()
             mock_dashboard_class.return_value = mock_dashboard
 
-            with patch('music_organizer.dashboard_cli.SimpleConsole') as mock_console:
+            with patch('music_organizer.console_utils.SimpleConsole'):
                 result = await run_dashboard(args)
 
                 # Verify dashboard was initialized
-                mock_dashboard.initialize.assert_called_once()
+                mock_dashboard.initialize.assert_called_once_with(temp_library)
+                mock_dashboard.query_bus.dispatch.assert_called_once()
                 assert result == 0
 
     @pytest.mark.asyncio
@@ -258,15 +277,20 @@ class TestDashboardCLI:
         parser = create_parser()
         args = parser.parse_args([str(temp_library), "--genre-analysis"])
 
-        with patch('music_organizer.dashboard.StatisticsDashboard') as mock_dashboard_class:
+        with patch('music_organizer.dashboard_cli.StatisticsDashboard') as mock_dashboard_class:
             mock_dashboard = MagicMock()
+            mock_dashboard.initialize = AsyncMock()
+            mock_dashboard.query_bus = MagicMock()
+            mock_dashboard.query_bus.dispatch = AsyncMock()
+            mock_dashboard._print_genre_section = MagicMock()
             mock_dashboard_class.return_value = mock_dashboard
 
-            with patch('music_organizer.dashboard_cli.SimpleConsole') as mock_console:
+            with patch('music_organizer.console_utils.SimpleConsole'):
                 result = await run_dashboard(args)
 
                 # Verify dashboard was initialized
-                mock_dashboard.initialize.assert_called_once()
+                mock_dashboard.initialize.assert_called_once_with(temp_library)
+                mock_dashboard.query_bus.dispatch.assert_called_once()
                 assert result == 0
 
     @pytest.mark.asyncio
@@ -275,15 +299,20 @@ class TestDashboardCLI:
         parser = create_parser()
         args = parser.parse_args([str(temp_library), "--format-only"])
 
-        with patch('music_organizer.dashboard.StatisticsDashboard') as mock_dashboard_class:
+        with patch('music_organizer.dashboard_cli.StatisticsDashboard') as mock_dashboard_class:
             mock_dashboard = MagicMock()
+            mock_dashboard.initialize = AsyncMock()
+            mock_dashboard.query_bus = MagicMock()
+            mock_dashboard.query_bus.dispatch = AsyncMock()
+            mock_dashboard._print_format_section = MagicMock()
             mock_dashboard_class.return_value = mock_dashboard
 
-            with patch('music_organizer.dashboard_cli.SimpleConsole') as mock_console:
+            with patch('music_organizer.console_utils.SimpleConsole'):
                 result = await run_dashboard(args)
 
                 # Verify dashboard was initialized
-                mock_dashboard.initialize.assert_called_once()
+                mock_dashboard.initialize.assert_called_once_with(temp_library)
+                mock_dashboard.query_bus.dispatch.assert_called_once()
                 assert result == 0
 
     def test_parser_help_message(self):
