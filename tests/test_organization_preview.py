@@ -16,7 +16,7 @@ from music_organizer.core.organization_preview import (
 from music_organizer.models.audio_file import AudioFile, ContentType
 from music_organizer.domain.value_objects import FileFormat
 from music_organizer.models.config import Config
-from music_organizer.domain.value_objects import ArtistName, Metadata
+from music_organizer.domain.value_objects import ArtistName, Metadata, TrackNumber
 
 
 @pytest.fixture
@@ -36,52 +36,49 @@ def sample_audio_files():
     # Studio album
     metadata1 = Metadata(
         title="Test Song 1",
-        artists=[ArtistName("Test Artist 1")],
+        artists=frozenset([ArtistName("Test Artist 1")]),
         album="Test Album 1",
         year=2020,
         genre="Rock",
-        track_number=1,
-        content_type=ContentType.STUDIO
+        track_number=TrackNumber(1)
     )
     files.append(AudioFile(
         path=Path("/test/source/artist1/album1/song1.flac"),
-        size_mb=25.0,
-        format=FileFormat.FLAC,
-        metadata=metadata1
+        file_type=FileFormat.FLAC,
+        metadata=metadata1,
+        content_type=ContentType.STUDIO
     ))
 
     # Live recording
     metadata2 = Metadata(
         title="Live Song 2",
-        artists=[ArtistName("Test Artist 2")],
+        artists=frozenset([ArtistName("Test Artist 2")]),
         album="Live Album",
         year=2021,
         genre="Rock",
-        track_number=1,
-        content_type=ContentType.LIVE
+        track_number=TrackNumber(1)
     )
     files.append(AudioFile(
         path=Path("/test/source/artist2/live/song2.mp3"),
-        size_mb=8.0,
-        format=FileFormat.MP3,
-        metadata=metadata2
+        file_type=FileFormat.MP3,
+        metadata=metadata2,
+        content_type=ContentType.LIVE
     ))
 
     # Compilation
     metadata3 = Metadata(
         title="Compilation Track",
-        artists=[ArtistName("Various Artists")],
+        artists=frozenset([ArtistName("Various Artists")]),
         album="Best of 2020",
         year=2020,
         genre="Pop",
-        track_number=5,
-        content_type=ContentType.COMPILATION
+        track_number=TrackNumber(5)
     )
     files.append(AudioFile(
         path=Path("/test/source/compilations/best2020/track5.wav"),
-        size_mb=45.0,
-        format=FileFormat.WAV,
-        metadata=metadata3
+        file_type=FileFormat.WAV,
+        metadata=metadata3,
+        content_type=ContentType.COMPILATION
     ))
 
     return files
@@ -276,7 +273,7 @@ class TestOrganizationPreview:
                 source_path=audio_file.path,
                 target_path=Path(f"/target/{audio_file.path.name}"),
                 file_size=int(audio_file.size_mb * 1024 * 1024),
-                metadata=audio_file.metadata
+                audio_file=audio_file
             ))
 
         preview._calculate_statistics(sample_audio_files)
@@ -372,7 +369,7 @@ class TestOrganizationPreview:
                 source_path=audio_file.path,
                 target_path=target_mapping[audio_file.path],
                 file_size=int(audio_file.size_mb * 1024 * 1024),
-                metadata=audio_file.metadata
+                audio_file=audio_file
             ))
 
         # Calculate stats
@@ -425,7 +422,7 @@ class TestInteractivePreview:
                 source_path=audio_file.path,
                 target_path=target_mapping[audio_file.path],
                 file_size=int(audio_file.size_mb * 1024 * 1024),
-                metadata=audio_file.metadata
+                audio_file=audio_file
             ))
 
         preview._calculate_statistics(sample_audio_files)
@@ -555,19 +552,18 @@ class TestPreviewIntegration:
         for i in range(100):  # 100 files
             metadata = Metadata(
                 title=f"Song {i}",
-                artists=[ArtistName(f"Artist {i % 10}")],  # 10 unique artists
+                artists=frozenset([ArtistName(f"Artist {i % 10}")]),  # 10 unique artists
                 album=f"Album {i // 10}",  # 10 albums
                 year=2020 + (i % 3),
                 genre="Rock",
-                track_number=i % 12 + 1,
-                content_type=ContentType.STUDIO
+                track_number=TrackNumber(i % 12 + 1)
             )
 
             audio_file = AudioFile(
                 path=Path(f"/source/artist{i % 10}/album{i // 10}/song{i}.flac"),
-                size_mb=25.0,
-                format=FileFormat.FLAC,
-                metadata=metadata
+                file_type=FileFormat.FLAC,
+                metadata=metadata,
+                content_type=ContentType.STUDIO
             )
 
             audio_files.append(audio_file)
@@ -602,19 +598,18 @@ class TestPreviewIntegration:
         # Test with perfect metadata
         perfect_metadata = Metadata(
             title="Perfect Song",
-            artists=[ArtistName("Perfect Artist")],
+            artists=frozenset([ArtistName("Perfect Artist")]),
             album="Perfect Album",
             year=2023,
             genre="Perfect Genre",
-            track_number=1,
-            content_type=ContentType.STUDIO
+            track_number=TrackNumber(1)
         )
 
         audio_file = AudioFile(
             path=Path("/perfect/song.flac"),
-            size_mb=10.0,
-            format=FileFormat.FLAC,
-            metadata=perfect_metadata
+            file_type=FileFormat.FLAC,
+            metadata=perfect_metadata,
+            content_type=ContentType.STUDIO
         )
 
         preview.operations = [PreviewOperation(
@@ -622,7 +617,7 @@ class TestPreviewIntegration:
             source_path=audio_file.path,
             target_path=Path("/target/perfect/song.flac"),
             file_size=10 * 1024 * 1024,
-            metadata=perfect_metadata
+            audio_file=audio_file
         )]
 
         preview._calculate_statistics([audio_file])

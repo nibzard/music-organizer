@@ -16,6 +16,7 @@ from music_organizer.domain.organization.entities import OrganizationRule
 from music_organizer.domain.organization.value_objects import OrganizationPattern, ConflictStrategy
 from music_organizer.domain.classification.services import ClassificationService
 from music_organizer.domain.classification.entities import Classifier
+from music_organizer.domain.value_objects import TrackNumber
 
 
 class TestMetadataServiceResultPattern:
@@ -35,7 +36,7 @@ class TestMetadataServiceResultPattern:
         audio_path = AudioPath("/music/test.flac")
         metadata = Metadata(
             title="Test Song",
-            artists=[ArtistName("Test Artist")],
+            artists=frozenset([ArtistName("Test Artist")]),
             album="Test Album"
         )
         return Recording(path=audio_path, metadata=metadata)
@@ -82,7 +83,7 @@ class TestMetadataServiceResultPattern:
         recordings = [
             Recording(
                 path=AudioPath(f"/music/test{i}.flac"),
-                metadata=Metadata(title=f"Song {i}", artists=[ArtistName("Artist")])
+                metadata=Metadata(title=f"Song {i}", artists=frozenset([ArtistName("Artist")]))
             )
             for i in range(3)
         ]
@@ -108,7 +109,7 @@ class TestMetadataServiceResultPattern:
         """Test batch enhancement with length mismatch."""
         recordings = [Recording(
             path=AudioPath("/music/test.flac"),
-            metadata=Metadata(title="Song", artists=[ArtistName("Artist")])
+            metadata=Metadata(title="Song", artists=frozenset([ArtistName("Artist")]))
         )]
         enhancements = []  # Empty list
 
@@ -159,7 +160,7 @@ class TestCatalogServiceResultPattern:
         audio_path = AudioPath("/music/test.flac")
         metadata = Metadata(
             title="Test Song",
-            artists=[ArtistName("Test Artist")],
+            artists=frozenset([ArtistName("Test Artist")]),
             album="Test Album",
             year=2023
         )
@@ -344,7 +345,7 @@ class TestClassificationServiceResultPattern:
         """Create a test recording."""
         metadata = Metadata(
             title="Test Song",
-            artists=[ArtistName("Test Artist")],
+            artists=frozenset([ArtistName("Test Artist")]),
             album="Test Album",
             year=2023,
             genre="Rock"
