@@ -616,10 +616,21 @@ music-batch-metadata /music/library --workers 8 --batch-size 200
 ## 📋 Phase 5: Polish & Production (Week 9-10)
 
 ### Testing & Quality
-- [x] ✅ Fixed test imports and basic test failures (current coverage: 16%)
+- [x] ✅ Fixed test imports and basic test failures (current coverage: 37%, up from 16%)
 - [x] ✅ Added tests for rich_progress_renderer module (0% → 94% coverage)
 - [x] ✅ Added tests for memory_monitor module (0% → 78% coverage)
-- [ ] 🔴 Complete test suite to achieve 95% coverage (requires significant work - many modules still at 0% coverage)
+- [ ] 🔴 **IN PROGRESS**: Achieve 95% test coverage (currently at 37%)
+  - **Status**: 376 tests passing, 150+ tests failing
+  - **Major Blocker**: Base Command/Query classes use `kw_only=True`, breaking many test instantiations
+  - **30+ modules with 0% coverage need tests**:
+    - All CQRS modules (application/commands/*, application/queries/*)
+    - All CLI modules (async_cli.py, cli.py, rollback_cli.py, batch_metadata_cli.py)
+    - Core modules (magic_mode.py, organizer.py, mover.py, organization_preview.py)
+    - Events system (event_bus.py, domain_events.py)
+    - Many plugins (duplicates, statistics, smart_cache, etc.)
+  - **Modules with good coverage** (70%+):
+    - rich_progress_renderer (94%), memory_monitor (78%), domain value_objects
+  - **Next steps**: Fix kw_only dataclass issue, add tests for uncovered modules
 - [ ] 🟡 Add property-based testing for edge cases
 - [ ] 🟡 Implement performance benchmarks in CI/CD
 - [ ] 🟢 Add security audit for file operations
