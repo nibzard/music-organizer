@@ -800,7 +800,10 @@ music-batch-metadata /music/library --workers 8 --batch-size 200
   - **Findings**: All required metadata available, adapter pattern exists
   - **Recommendation**: 10-14 hours implementation (adapter + 2 plugins)
   - **Documentation**: `docs/lastfm-integration-research.md`
-- [ ] 🟢 Create Kodi/Jellyfin compatibility mode
+- [x] ✅ **Research Kodi/Jellyfin compatibility mode** (2025-12-23)
+  - **Findings**: All metadata available for NFO generation, plugin system ready
+  - **Recommendation**: 12-16 hours for full NFO export plugin with MBID support
+  - **Documentation**: `docs/kodi-jellyfin-research.md`
 - [ ] 🟢 Add Spotify playlist import/export
 
 ## 📝 Recent Implementations
