@@ -796,7 +796,10 @@ music-batch-metadata /music/library --workers 8 --batch-size 200
   - Adapter: `src/music_organizer/infrastructure/external/musicbrainz_adapter.py`
   - AcoustId support: `src/music_organizer/infrastructure/external/acoustid_adapter.py`
   - Features: rate limiting, caching, fuzzy search, release lookup, artist search
-- [ ] 🟢 Implement Last.fm scrobbling integration
+- [x] ✅ **Research Last.fm scrobbling integration** (2025-12-23)
+  - **Findings**: All required metadata available, adapter pattern exists
+  - **Recommendation**: 10-14 hours implementation (adapter + 2 plugins)
+  - **Documentation**: `docs/lastfm-integration-research.md`
 - [ ] 🟢 Create Kodi/Jellyfin compatibility mode
 - [ ] 🟢 Add Spotify playlist import/export
 
