@@ -1,6 +1,7 @@
 """Tests for Rollback CLI module."""
 
 import pytest
+import argparse
 import asyncio
 import json
 import sys
@@ -133,8 +134,10 @@ class TestCmdRollback:
             mock_tracker_class.return_value = mock_tracker
 
             with patch('music_organizer.rollback_cli.console'):
-                with patch('sys.exit') as mock_exit:
-                    await cmd_rollback(args)
+                with patch('music_organizer.rollback_cli.sys.exit') as mock_exit:
+                    mock_exit.side_effect = SystemExit(1)
+                    with pytest.raises(SystemExit):
+                        await cmd_rollback(args)
                     mock_exit.assert_called_once_with(1)
 
     @pytest.mark.asyncio
@@ -386,8 +389,10 @@ class TestShowSessionOperations:
             mock_tracker_class.return_value = mock_tracker
 
             with patch('music_organizer.rollback_cli.console'):
-                with patch('sys.exit') as mock_exit:
-                    await show_session_operations(mock_tracker, 'test-session', None, 'table')
+                with patch('music_organizer.rollback_cli.sys.exit') as mock_exit:
+                    mock_exit.side_effect = SystemExit(1)
+                    with pytest.raises(SystemExit):
+                        await show_session_operations(mock_tracker, 'test-session', None, 'table')
                     mock_exit.assert_called_once_with(1)
 
     @pytest.mark.asyncio
@@ -522,35 +527,37 @@ class TestRestoreFromBackup:
     @pytest.mark.asyncio
     async def test_restore_nonexistent_backup_dir(self):
         """Test restoring from non-existent backup directory."""
-        backup_dir = Path("/nonexistent/backup")
+        backup_dir = Mock(spec=Path)
+        backup_dir.exists.return_value = False
+        backup_dir.__str__ = lambda self: "/nonexistent/backup"
         target_dir = Path("/target")
 
         with patch('music_organizer.rollback_cli.console'):
-            with patch('sys.exit') as mock_exit:
-                await restore_from_backup(backup_dir, target_dir)
+            with patch('music_organizer.rollback_cli.sys.exit') as mock_exit:
+                mock_exit.side_effect = SystemExit(1)
+                with pytest.raises(SystemExit):
+                    await restore_from_backup(backup_dir, target_dir)
                 mock_exit.assert_called_once_with(1)
 
     @pytest.mark.asyncio
     async def test_restore_no_manifest(self):
         """Test restoring without manifest file."""
-        backup_dir = Path("/backup")
+        backup_dir = Mock(spec=Path)
+        backup_dir.exists.return_value = True
+        backup_dir.__truediv__ = Mock(return_value=Mock(spec=Path, exists=Mock(return_value=False)))
+        backup_dir.__str__ = lambda self: "/backup"
         target_dir = Path("/target")
 
-        with patch('pathlib.Path.exists', return_value=True):
-            manifest_path = backup_dir / 'manifest.json'
-            with patch.object(manifest_path, 'exists', return_value=False):
-                with patch('music_organizer.rollback_cli.console'):
-                    with patch('sys.exit') as mock_exit:
-                        await restore_from_backup(backup_dir, target_dir)
-                        mock_exit.assert_called_once_with(1)
+        with patch('music_organizer.rollback_cli.console'):
+            with patch('music_organizer.rollback_cli.sys.exit') as mock_exit:
+                mock_exit.side_effect = SystemExit(1)
+                with pytest.raises(SystemExit):
+                    await restore_from_backup(backup_dir, target_dir)
+                mock_exit.assert_called_once_with(1)
 
     @pytest.mark.asyncio
     async def test_restore_dry_run(self):
         """Test restore in dry run mode."""
-        backup_dir = Path("/backup")
-        target_dir = Path("/target")
-        manifest_path = backup_dir / 'manifest.json'
-
         manifest_data = {
             'timestamp': '2024-01-01T12:00:00',
             'source_root': '/src',
@@ -559,23 +566,31 @@ class TestRestoreFromBackup:
             ]
         }
 
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch.object(manifest_path, 'exists', return_value=True):
-                with patch('builtins.open', create=True) as mock_open:
-                    mock_open.return_value.__enter__.return_value.read.return_value = json.dumps(manifest_data)
+        backup_file = Mock(spec=Path)
+        backup_file.exists.return_value = True
 
-                    with patch('music_organizer.rollback_cli.SimpleProgressBar'):
-                        with patch('music_organizer.rollback_cli.console'):
-                            await restore_from_backup(backup_dir, target_dir, dry_run=True)
-                            # Should complete without actually copying
+        backup_dir = Mock(spec=Path)
+        backup_dir.exists.return_value = True
+        backup_dir.__truediv__ = Mock(side_effect=lambda x: backup_file if x == 'file1.mp3' else Mock(spec=Path, exists=Mock(return_value=True)))
+        backup_dir.__str__ = lambda self: "/backup"
+
+        target_dir = Path("/target")
+        target_file = target_dir / 'file1.mp3'
+
+        with patch('builtins.open', create=True) as mock_open:
+            mock_file = MagicMock()
+            mock_file.read.return_value = json.dumps(manifest_data)
+            mock_file.__enter__ = Mock(return_value=mock_file)
+            mock_file.__exit__ = Mock(return_value=False)
+            mock_open.return_value = mock_file
+
+            with patch('music_organizer.rollback_cli.SimpleProgressBar'):
+                with patch('music_organizer.rollback_cli.console'):
+                    await restore_from_backup(backup_dir, target_dir, dry_run=True)
 
     @pytest.mark.asyncio
     async def test_restore_with_missing_backup_file(self):
         """Test restore with missing backup file."""
-        backup_dir = Path("/backup")
-        target_dir = Path("/target")
-        manifest_path = backup_dir / 'manifest.json'
-
         manifest_data = {
             'timestamp': '2024-01-01T12:00:00',
             'source_root': '/src',
@@ -584,24 +599,36 @@ class TestRestoreFromBackup:
             ]
         }
 
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch.object(manifest_path, 'exists', return_value=True):
-                with patch('builtins.open', create=True) as mock_open:
-                    mock_open.return_value.__enter__.return_value.read.return_value = json.dumps(manifest_data)
+        # Manifest exists (for reading)
+        manifest_path = Mock(spec=Path)
+        manifest_path.exists.return_value = True
 
-                    with patch('music_organizer.rollback_cli.SimpleProgressBar'):
-                        with patch('music_organizer.rollback_cli.console'):
-                            await restore_from_backup(backup_dir, target_dir, dry_run=False)
-                            # Should handle missing file
+        # But backup file doesn't exist
+        backup_file = Mock(spec=Path)
+        backup_file.exists.return_value = False
+
+        backup_dir = Mock(spec=Path)
+        backup_dir.exists.return_value = True
+        # Return manifest_path for 'manifest.json', backup_file for actual file
+        backup_dir.__truediv__ = Mock(side_effect=lambda x: manifest_path if x == 'manifest.json' else backup_file)
+        backup_dir.__str__ = lambda self: "/backup"
+
+        target_dir = Path("/target")
+
+        with patch('builtins.open', create=True) as mock_open:
+            mock_file = MagicMock()
+            mock_file.read.return_value = json.dumps(manifest_data)
+            mock_file.__enter__ = Mock(return_value=mock_file)
+            mock_file.__exit__ = Mock(return_value=False)
+            mock_open.return_value = mock_file
+
+            with patch('music_organizer.rollback_cli.SimpleProgressBar'):
+                with patch('music_organizer.rollback_cli.console'):
+                    await restore_from_backup(backup_dir, target_dir, dry_run=False)
 
     @pytest.mark.asyncio
     async def test_restore_with_existing_target_file(self):
         """Test restore when target file already exists."""
-        backup_dir = Path("/backup")
-        target_dir = Path("/target")
-        manifest_path = backup_dir / 'manifest.json'
-        backup_file = backup_dir / 'file1.mp3'
-
         manifest_data = {
             'timestamp': '2024-01-01T12:00:00',
             'source_root': '/src',
@@ -610,18 +637,32 @@ class TestRestoreFromBackup:
             ]
         }
 
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch.object(manifest_path, 'exists', return_value=True):
-                with patch.object(backup_file, 'exists', return_value=True):
-                    with patch('builtins.open', create=True) as mock_open:
-                        mock_open.return_value.__enter__.return_value.read.return_value = json.dumps(manifest_data)
+        backup_file = Mock(spec=Path)
+        backup_file.exists.return_value = True
 
-                        target_file = target_dir / 'file1.mp3'
-                        with patch.object(target_file, 'exists', return_value=True):
-                            with patch('music_organizer.rollback_cli.SimpleProgressBar'):
-                                with patch('music_organizer.rollback_cli.console'):
-                                    await restore_from_backup(backup_dir, target_dir, dry_run=False)
-                                    # Should handle existing file
+        backup_dir = Mock(spec=Path)
+        backup_dir.exists.return_value = True
+        backup_dir.__truediv__ = Mock(return_value=backup_file)
+        backup_dir.__str__ = lambda self: "/backup"
+
+        target_dir = Mock(spec=Path)
+        target_file = Mock(spec=Path)
+        target_file.exists.return_value = True
+        target_dir.__truediv__ = Mock(return_value=target_file)
+        target_dir.__str__ = lambda self: "/target"
+        target_file.parent = Mock()
+        target_file.parent.mkdir = Mock()
+
+        with patch('builtins.open', create=True) as mock_open:
+            mock_file = MagicMock()
+            mock_file.read.return_value = json.dumps(manifest_data)
+            mock_file.__enter__ = Mock(return_value=mock_file)
+            mock_file.__exit__ = Mock(return_value=False)
+            mock_open.return_value = mock_file
+
+            with patch('music_organizer.rollback_cli.SimpleProgressBar'):
+                with patch('music_organizer.rollback_cli.console'):
+                    await restore_from_backup(backup_dir, target_dir, dry_run=False)
 
 
 if __name__ == '__main__':

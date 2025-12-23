@@ -177,7 +177,7 @@ async def cmd_rules_test(args) -> int:
         engine = RegexRuleEngine(rules_file)
 
         # Scan for music files
-        scanner = AsyncFileScanner()
+        scanner = IncrementalScanner()
         files = await scanner.scan_directory(Path(args.directory), recursive=True)
         audio_files = []
 
@@ -208,7 +208,7 @@ async def cmd_rules_test(args) -> int:
                 console.print(f"  Pattern: {matching_rule.pattern}")
 
                 if args.verbose:
-                    console.print(f"  Metadata: {audio_file.artist} - {audio_file.album}")
+                    console.print(f"  Metadata: {audio_file.primary_artist} - {audio_file.album}")
                     if matching_rule.conditions:
                         for condition in matching_rule.conditions:
                             if isinstance(condition, RuleCondition):
@@ -218,7 +218,7 @@ async def cmd_rules_test(args) -> int:
             else:
                 console.print(f"✗ {audio_file.path.name} (no rule matched)")
                 if args.show_unmatched:
-                    console.print(f"  Metadata: {audio_file.artist} - {audio_file.album}")
+                    console.print(f"  Metadata: {audio_file.primary_artist} - {audio_file.album}")
                 console.print()
 
         # Summary
@@ -450,7 +450,7 @@ async def cmd_rules_preview(args) -> int:
         plugin = RegexRulesPlugin(config)
 
         # Scan for files
-        scanner = AsyncFileScanner()
+        scanner = IncrementalScanner()
         files = await scanner.scan_directory(Path(args.source), recursive=True)
         metadata_handler = MetadataHandler()
 

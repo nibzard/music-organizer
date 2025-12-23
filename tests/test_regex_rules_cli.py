@@ -300,7 +300,7 @@ class TestCliCommands:
             mock_console.print.assert_called()
 
     @pytest.mark.asyncio
-    @patch('music_organizer.regex_rules_cli.AsyncFileScanner')
+    @patch('music_organizer.regex_rules_cli.IncrementalScanner')
     @patch('music_organizer.regex_rules_cli.MetadataHandler')
     async def test_cmd_rules_test(self, mock_metadata_handler, mock_file_scanner, mock_args):
         """Test the rules test command."""
@@ -316,8 +316,9 @@ class TestCliCommands:
         mock_handler = Mock()
         mock_handler.extract_metadata = AsyncMock(return_value=AudioFile(
             path=Path("/test/track1.mp3"),
+            file_type="mp3",
             title="Test Song",
-            artist="Test Artist",
+            primary_artist="Test Artist",
             album="Test Album",
             year=2020,
             genre="Rock"
@@ -348,7 +349,8 @@ class TestCliIntegration:
         rules_parser = setup_rules_parser(subparsers)
 
         assert rules_parser is not None
-        assert rules_parser.name == "rules"
+        # ArgumentParser doesn't have a 'name' attribute, check via prog or description
+        assert "rules" in rules_parser.prog
 
         # Test that subcommands exist
         subcommands = rules_parser._subparsers._group_actions[0].choices
@@ -440,7 +442,7 @@ class TestCliEdgeCases:
         mock_args.target = "/tmp/target"
         mock_args.limit = 10
 
-        with patch('music_organizer.regex_rules_cli.AsyncFileScanner') as mock_scanner:
+        with patch('music_organizer.regex_rules_cli.IncrementalScanner') as mock_scanner:
             scanner = Mock()
             scanner.scan_directory = AsyncMock(return_value=[])  # No files
             mock_scanner.return_value = scanner
@@ -456,7 +458,7 @@ class TestCliEdgeCases:
         mock_args.directory = "/test"
         mock_args.limit = 1
 
-        with patch('music_organizer.regex_rules_cli.AsyncFileScanner') as mock_scanner:
+        with patch('music_organizer.regex_rules_cli.IncrementalScanner') as mock_scanner:
             scanner = Mock()
             scanner.scan_directory = AsyncMock(return_value=[Path("/test/track.mp3")])
             mock_scanner.return_value = scanner
@@ -470,5 +472,6 @@ class TestCliEdgeCases:
 
                 with patch('music_organizer.regex_rules_cli.console') as mock_console:
                     result = await cmd_rules_test(mock_args)
-                    assert result == 0  # Should continue with other files
-                    mock_console.warning.assert_not_called()  # Since verbose is False
+                    assert result == 0  # Should continue gracefully
+                    # Warning should be called because no audio files were successfully processed
+                    mock_console.warning.assert_called_once()

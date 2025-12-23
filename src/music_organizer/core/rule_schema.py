@@ -412,7 +412,7 @@ def create_example_rules_file() -> Dict[str, Any]:
                         "field": "genre",
                         "operator": "matches",
                         "value": "soundtrack|score|film|motion picture",
-                        "case_sensitive": false
+                        "case_sensitive": False
                     }
                 ],
                 "pattern": "Soundtracks/{album} ({year})",
@@ -427,7 +427,7 @@ def create_example_rules_file() -> Dict[str, Any]:
                         "field": "genre",
                         "operator": "matches",
                         "value": "classical|orchestra|symphony",
-                        "case_sensitive": false
+                        "case_sensitive": False
                     }
                 ],
                 "pattern": "Classical/{composer}/{album}/{track_number:02} - {title}",
