@@ -1,0 +1,11 @@
+{
+  "enabled": false,
+  "api_key": "",
+  "api_secret": "",
+  "session_key": "",
+  "scrobble_on_export": true,
+  "scrobble_timestamp": "current",
+  "batch_size": 50,
+  "retry_failed": true,
+  "max_retries": 3
+}

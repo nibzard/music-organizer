@@ -11,7 +11,7 @@ import time
 from typing import Dict, List, Optional, Any
 from urllib.parse import quote
 
-from ..domain.catalog import Metadata, ArtistName
+from ...domain.catalog.value_objects import Metadata, ArtistName
 
 
 class MusicBrainzAdapter:

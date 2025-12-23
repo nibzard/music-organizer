@@ -7,8 +7,10 @@ implementing the Anti-Corruption Layer pattern to protect domain integrity.
 
 from .musicbrainz_adapter import MusicBrainzAdapter
 from .acoustid_adapter import AcoustIdAdapter
+from .lastfm_adapter import LastFmAdapter
 
 __all__ = [
     "MusicBrainzAdapter",
     "AcoustIdAdapter",
+    "LastFmAdapter",
 ]

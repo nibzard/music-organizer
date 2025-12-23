@@ -1,0 +1,8 @@
+{
+  "enabled": false,
+  "api_key": "",
+  "timeout": 10.0,
+  "rate_limit": 2.0,
+  "enhance_genres": true,
+  "cache_enabled": true
+}
