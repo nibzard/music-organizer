@@ -785,7 +785,10 @@ music-batch-metadata /music/library --workers 8 --batch-size 200
   - **Findings**: 7 ML opportunities identified, from quick wins (genre) to advanced (acoustic similarity)
   - **Recommendation**: Start with genre classifier (scikit-learn), add audio features (librosa)
   - **Documentation**: `docs/ml-classification-research.md`
-- [ ] 🟢 Prototype cloud storage integration
+- [x] ✅ **Prototype cloud storage integration** (2025-12-23)
+  - **Findings**: Feasible via storage abstraction layer extending FilesystemAdapter
+  - **Recommendation**: MVP with S3 (3-4 weeks), then add GCS/Azure
+  - **Documentation**: `docs/cloud-storage-research.md`
 
 ### Integration
 - [ ] 🟢 Add MusicBrainz integration for metadata enrichment
